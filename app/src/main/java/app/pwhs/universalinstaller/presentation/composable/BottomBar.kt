@@ -20,6 +20,7 @@ import app.pwhs.universalinstaller.R
 import app.pwhs.universalinstaller.presentation.install.InstallActivity
 import app.pwhs.universalinstaller.presentation.manage.ManageActivity
 import app.pwhs.universalinstaller.presentation.setting.SettingActivity
+import app.pwhs.universalinstaller.util.extension.disableSceneTransition
 
 enum class BottomBarItem(
     val activityClass: Class<*>,
@@ -56,8 +57,7 @@ fun BottomBar(
                             flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                         }
                         context.startActivity(intent)
-                        @Suppress("DEPRECATION")
-                        (context as? android.app.Activity)?.overridePendingTransition(0, 0)
+                        (context as? android.app.Activity)?.disableSceneTransition()
                     }
                 },
                 icon = {

@@ -38,7 +38,7 @@ import androidx.core.net.toUri
 import app.pwhs.universalinstaller.presentation.install.InstallActivity
 import app.pwhs.universalinstaller.presentation.sync.SyncActivity
 import app.pwhs.universalinstaller.presentation.manage.ManageActivity
-
+import app.pwhs.universalinstaller.util.extension.disableSceneTransition
 
 private enum class AppRoute { Splash, Onboarding, Main }
 
@@ -157,7 +157,9 @@ class MainActivity : ComponentActivity() {
                                         Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 },
                             )
+                            this@MainActivity.disableSceneTransition()
                             finish()
+                            this@MainActivity.disableSceneTransition()
                         }
                     }
                 }

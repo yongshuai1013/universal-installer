@@ -20,6 +20,7 @@ import app.pwhs.universalinstaller.ui.theme.UniversalInstallerTheme
 import app.pwhs.universalinstaller.util.LocaleHelper
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import app.pwhs.universalinstaller.util.extension.disableSceneTransition
 
 abstract class BaseActivity : FragmentActivity() {
 
@@ -37,14 +38,12 @@ abstract class BaseActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         
         // Remove standard sliding window transitions to mimic Compose navigation speed
-        @Suppress("DEPRECATION")
-        overridePendingTransition(0, 0)
+        disableSceneTransition()
     }
 
     override fun finish() {
         super.finish()
-        @Suppress("DEPRECATION")
-        overridePendingTransition(0, 0)
+        disableSceneTransition()
     }
 
     protected fun setContentWithTheme(content: @Composable () -> Unit) {
