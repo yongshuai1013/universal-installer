@@ -17,6 +17,16 @@ Ask the user up front (single message, both questions):
 
 If the working tree is dirty, stop and tell the user — this skill assumes a clean tree.
 
+## Step 0 — Build Verification
+
+Before making any changes, run the build to ensure the current state is stable:
+
+```bash
+./gradlew assembleDebug --quiet
+```
+
+If the build fails, stop and report the errors to the user. Do not proceed with the release until the build is fixed.
+
 ## Step 1 — Bump version
 
 Read `app/build.gradle.kts`, find:
@@ -95,6 +105,7 @@ After `gh release edit` succeeds, print the release URL (`gh release view v<vers
 
 ## Guardrails
 
+- Never release if the local build (`./gradlew assembleDebug`) fails.
 - Never run with a dirty tree.
 - Never force-push, never `--amend`, never skip hooks.
 - Tag format is `v<versionName>` (with the `v`). The deploy workflow only triggers on `v*`.
