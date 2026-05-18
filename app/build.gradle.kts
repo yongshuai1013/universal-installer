@@ -110,6 +110,7 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.coil.compose)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

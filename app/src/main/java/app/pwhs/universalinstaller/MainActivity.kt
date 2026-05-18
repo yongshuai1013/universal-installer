@@ -14,6 +14,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -25,7 +26,7 @@ import androidx.compose.runtime.setValue
 import app.pwhs.universalinstaller.presentation.onboarding.OnboardingScreen
 import app.pwhs.universalinstaller.presentation.setting.ThemeMode
 import app.pwhs.universalinstaller.presentation.setting.dataStore
-import app.pwhs.universalinstaller.presentation.splash.SplashScreen
+import app.pwhs.universalinstaller.presentation.splash.SplashActivity
 import app.pwhs.universalinstaller.ui.theme.UniversalInstallerTheme
 import app.pwhs.universalinstaller.util.LocaleHelper
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -40,7 +41,7 @@ import app.pwhs.universalinstaller.presentation.sync.SyncActivity
 import app.pwhs.universalinstaller.presentation.manage.ManageActivity
 import app.pwhs.universalinstaller.util.extension.disableSceneTransition
 
-private enum class AppRoute { Splash, Onboarding, Main }
+private enum class AppRoute { Onboarding, Main }
 
 class MainActivity : ComponentActivity() {
 
@@ -49,12 +50,21 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Shortcuts (universalinstaller://sync, ://uninstall) cold-launch this Activity
+        // directly, bypassing SplashActivity. installSplashScreen keeps the system splash
+        // window in place until the first Compose frame so we don't flash the Material
+        // default grey on slower devices.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setupShortcuts()
 
-        // Splash can be skipped for deep-links.
+        // SplashActivity owns the cold-start splash and tells us whether onboarding
+        // still needs to run via EXTRA_SHOW_ONBOARDING. Deep links (shortcuts) target
+        // this Activity directly without that extra and skip onboarding entirely.
         val isDeepLink = intent?.data?.scheme == "universalinstaller"
+        val showOnboarding = !isDeepLink &&
+            intent?.getBooleanExtra(SplashActivity.EXTRA_SHOW_ONBOARDING, false) == true
         setContent {
             val themeModeFlow = remember {
                 dataStore.data.map { prefs ->
@@ -93,15 +103,11 @@ class MainActivity : ComponentActivity() {
             }
 
             var currentRoute by remember {
-                mutableStateOf(if (isDeepLink) AppRoute.Main else AppRoute.Splash)
+                mutableStateOf(if (showOnboarding) AppRoute.Onboarding else AppRoute.Main)
             }
 
             UniversalInstallerTheme(darkTheme = darkTheme) {
                 when (currentRoute) {
-                    AppRoute.Splash -> SplashScreen(
-                        onNavigateToOnboarding = { currentRoute = AppRoute.Onboarding },
-                        onNavigateToMain = { currentRoute = AppRoute.Main },
-                    )
                     AppRoute.Onboarding -> OnboardingScreen(
                         onFinish = { currentRoute = AppRoute.Main },
                     )

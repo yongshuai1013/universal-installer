@@ -57,20 +57,29 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.UniversalInstaller">
+        <!-- Launcher entry. SplashActivity owns the cold-start splash and decides whether
+             to show onboarding before handing control to MainActivity. File-open intents
+             land directly in DialogInstallActivity below so external installs never flash
+             through the launcher activity. -->
         <activity
-            android:name=".MainActivity"
+            android:name=".presentation.splash.SplashActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.UniversalInstaller">
-            <!-- Launcher-only entry. File-open intents land directly in
-                 DialogInstallActivity below so external installs never flash through the
-                 launcher activity. Deep links (universalinstaller://sync, ://uninstall)
-                 still come through here because they're internal-only. -->
+            android:theme="@style/Theme.UniversalInstaller.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Deep-link target for shortcuts (universalinstaller://sync, ://uninstall) and
+             post-splash hand-off from SplashActivity. Kept on the Splash theme so cold
+             launches via shortcuts still get a polished system splash. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.UniversalInstaller.Splash" />
 
         <activity
             android:name=".presentation.install.InstallActivity"
