@@ -133,6 +133,7 @@ dependencies {
     implementation(libs.bottom.sheet)
 
     implementation(libs.timber)
+    implementation(libs.hiddenapibypass)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)

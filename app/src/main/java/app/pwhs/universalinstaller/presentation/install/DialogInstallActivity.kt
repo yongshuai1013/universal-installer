@@ -240,9 +240,6 @@ class DialogInstallActivity : ComponentActivity() {
             }
 
             UniversalInstallerTheme {
-                // Apply background blur on Android 12+
-                WindowBlurEffect(blurRadius = 30)
-
                 if (pendingRisks.isNotEmpty()) {
                     RiskConfirmDialog(
                         risks = pendingRisks,
@@ -261,14 +258,14 @@ class DialogInstallActivity : ComponentActivity() {
                         finish()
                     },
                     properties = DialogProperties(
-                        // We handle outside-tap manually below (via pointerInput) so the
-                        // scrim fade keeps animating during dismissal — letting the
-                        // platform dismiss instantly would be jarring.
-                        dismissOnClickOutside = false,
+                        dismissOnClickOutside = true,
                         dismissOnBackPress = true,
-                        usePlatformDefaultWidth = false,
+                        usePlatformDefaultWidth = true,
                     ),
                 ) {
+                    // Apply background blur to the dialog window itself on Android 12+
+                    WindowBlurEffect(blurRadius = 30)
+
                     DialogContent(
                         uiState = uiState,
                         dialogTarget = dialogTarget,
@@ -452,50 +449,23 @@ private fun DialogContent(
     onOpenInstalledApp: (String) -> Unit,
     onCloseAfterResult: () -> Unit,
 ) {
-    // The scrim Box swallows tap events that fall outside the card, mapping them to a
-    // cancel. The inner Surface's own pointerInput consumes its events so they never
-    // bubble up to the scrim's gesture detector.
-    Box(
+    Surface(
         modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { onCancel() })
-            },
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .widthIn(max = 480.dp)
+            .heightIn(max = 640.dp),
+        shape = MaterialTheme.shapes.extraLarge, // Use 28.dp from ExpressiveShapes
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f), // Semi-transparent for glass effect
+        tonalElevation = AlertDialogDefaults.TonalElevation,
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 480.dp)
-                .heightIn(max = 640.dp)
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-                .pointerInput(Unit) {
-                    // Empty handler — its presence consumes taps so they never reach the
-                    // scrim's outside-tap detector.
-                    detectTapGestures(onTap = { /* swallow */ })
-                }
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow,
-                    ),
-                ),
-            shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
-            shadowElevation = 12.dp,
-        ) {
-            AnimatedContent(
-                targetState = uiState.dialogStage,
-                transitionSpec = {
-                    (fadeIn(tween(250)) + slideInVertically { it / 8 })
-                        .togetherWith(fadeOut(tween(200)) + slideOutVertically { -it / 8 })
-                        .using(SizeTransform(clip = false))
-                },
-                label = "DialogStageTransition",
-            ) { stage ->
-                when (stage) {
+        AnimatedContent(
+            targetState = uiState.dialogStage,
+            transitionSpec = {
+                fadeIn(tween(200)) togetherWith fadeOut(tween(150))
+            },
+            label = "DialogStageTransition",
+        ) { stage ->
+            when (stage) {
                     DialogStage.Loading -> {
                         LoadingContent()
                     }
@@ -583,7 +553,6 @@ private fun DialogContent(
                 }
             }
         }
-    }
 }
 
 @Composable

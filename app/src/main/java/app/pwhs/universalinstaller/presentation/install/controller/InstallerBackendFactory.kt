@@ -67,6 +67,17 @@ interface InstallerBackendFactory {
 
     /** `pm clear <pkg>` via root shell — wipes cache + data + obb. Store flavor → failure. */
     suspend fun clearAppDataViaRoot(packageName: String): Result<String>
+
+    /**
+     * Installs one or more APKs (uris) for a specific user ID.
+     * Implementations should use elevated privileges (Root/Shizuku) to bypass
+     * PackageInstaller limitations.
+     */
+    suspend fun installTargeted(
+        uris: List<android.net.Uri>,
+        userId: Int,
+        onProgress: (Int) -> Unit = {}
+    ): Result<String>
 }
 
 enum class SystemAppMethod {

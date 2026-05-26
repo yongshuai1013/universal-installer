@@ -955,7 +955,7 @@ private fun MenuCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
-        Column(modifier = Modifier.animateContentSize()) {
+        Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

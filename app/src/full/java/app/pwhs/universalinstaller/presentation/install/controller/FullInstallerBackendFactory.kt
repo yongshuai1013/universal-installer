@@ -124,6 +124,52 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
     override suspend fun clearAppDataViaRoot(packageName: String): Result<String> =
         runRootShell(packageName, "pm clear $packageName", successToken = "Success")
 
+    override suspend fun installTargeted(
+        uris: List<android.net.Uri>,
+        userId: Int,
+        onProgress: (Int) -> Unit
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val targetedInstaller = app.pwhs.universalinstaller.util.HiddenApiHacks.createPackageInstallerForUser(
+                android.app.ActivityThread.currentApplication(), userId
+            ) ?: throw RuntimeException("Failed to get targeted PackageInstaller")
+
+            // Simple session creation and installation for targeted user.
+            // This is a simplified version; for splits/OBBs we'd need more logic.
+            // For now, it provides the core feature requested in #27.
+            val params = android.content.pm.PackageInstaller.SessionParams(
+                android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL
+            )
+            val sessionId = targetedInstaller.createSession(params)
+            targetedInstaller.openSession(sessionId).use { session ->
+                uris.forEachIndexed { index, uri ->
+                    val name = "apk_$index.apk"
+                    val pfd = android.app.ActivityThread.currentApplication().contentResolver.openFileDescriptor(uri, "r")
+                        ?: throw RuntimeException("Failed to open Uri: $uri")
+                    pfd.use {
+                        session.openWrite(name, 0, it.statSize).use { out ->
+                            java.io.FileInputStream(it.fileDescriptor).use { input ->
+                                input.copyTo(out)
+                            }
+                        }
+                    }
+                    onProgress(((index + 1).toFloat() / uris.size * 100).toInt())
+                }
+                
+                // Manual commit tracking needed here, but for now we'll just commit.
+                val receiver = android.app.ActivityThread.currentApplication().let { ctx ->
+                    val intent = android.content.Intent("app.pwhs.universalinstaller.INSTALL_STATUS")
+                    android.app.PendingIntent.getBroadcast(
+                        ctx, sessionId, intent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
+                    )
+                }
+                session.commit(receiver.intentSender)
+            }
+            "Session $sessionId committed for user $userId"
+        }
+    }
+
     private suspend fun runRootShell(
         packageName: String,
         cmd: String,

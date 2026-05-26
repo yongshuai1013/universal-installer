@@ -45,4 +45,12 @@ class StoreInstallerBackendFactory : InstallerBackendFactory {
 
     override suspend fun clearAppDataViaRoot(packageName: String): Result<String> =
         Result.failure(UnsupportedOperationException("Root not available in this build"))
+
+    override suspend fun installTargeted(
+        uris: List<android.net.Uri>,
+        userId: Int,
+        onProgress: (Int) -> Unit
+    ): Result<String> = Result.failure(
+        UnsupportedOperationException("Targeted install not available in this build"),
+    )
 }

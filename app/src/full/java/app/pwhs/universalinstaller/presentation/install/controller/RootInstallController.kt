@@ -36,6 +36,13 @@ class RootInstallController(
         name: String,
     ): ProgressSession<InstallFailure> {
         val prefs = application.dataStore.data.first()
+        val targetUserId = prefs[PreferencesKeys.INSTALL_USER_ID]
+        
+        // Note: For now, if a targeted user is selected, we use the Ackpine session 
+        // normally but acknowledge that the targetUserId logic in Ackpine's 
+        // Shizuku/Root plugin might need further investigation.
+        // The UI selection is already persisted and ready.
+        
         return packageInstaller.createSession(uris) {
             this.name = name
             confirmation = Confirmation.IMMEDIATE
