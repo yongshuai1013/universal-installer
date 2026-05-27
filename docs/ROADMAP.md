@@ -36,7 +36,7 @@ Self-contained features, no external dependencies (no OAuth review, no Play Serv
 |-----------------------------------------|---------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | Cloud backup (Google Drive only, first) | community #2                          | L      | AppAuth, not Play Services SDK, to keep F-Droid build viable. **Start Google OAuth verification the day v1.5.0 ships** — that's the long pole. |
 | Default installer system-wide           | [#5](https://github.com/.../issues/5) | M      | Intent-filter priority work + onboarding flow to set as default handler. Pairs with the #12 intent-filter audit.                               |
-| Install profiles (per-source rules)     | [#5](https://github.com/.../issues/5) | M–L    | Data model: `(source package → backend, flags, prompt/silent)`.                                                                                |
+| Install profiles (per-source rules)     | [#5](https://github.com/.../issues/5) | M–L    | Backend core done. Next: Management UI & Smart Pick. See `docs/INSTALLER_PROFILES.md`. |
 
 ---
 
