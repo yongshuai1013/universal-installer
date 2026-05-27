@@ -47,6 +47,7 @@ class StoreInstallerBackendFactory : InstallerBackendFactory {
         Result.failure(UnsupportedOperationException("Root not available in this build"))
 
     override suspend fun installTargeted(
+        context: android.content.Context,
         uris: List<android.net.Uri>,
         userId: Int,
         onProgress: (Int) -> Unit

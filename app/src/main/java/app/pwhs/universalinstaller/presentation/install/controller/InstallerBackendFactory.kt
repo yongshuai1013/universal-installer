@@ -74,6 +74,7 @@ interface InstallerBackendFactory {
      * PackageInstaller limitations.
      */
     suspend fun installTargeted(
+        context: android.content.Context,
         uris: List<android.net.Uri>,
         userId: Int,
         onProgress: (Int) -> Unit = {}

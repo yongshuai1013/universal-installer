@@ -16,8 +16,10 @@ import app.pwhs.universalinstaller.data.remote.PackageDownloadService
 import app.pwhs.universalinstaller.data.remote.VirusTotalNotifier
 import app.pwhs.universalinstaller.data.remote.VirusTotalService
 import app.pwhs.universalinstaller.domain.model.ApkInfo
-import app.pwhs.universalinstaller.domain.model.SplitEntry
 import app.pwhs.universalinstaller.domain.model.SplitType
+import app.pwhs.universalinstaller.domain.model.SplitEntry
+import app.pwhs.universalinstaller.domain.model.InstallerProfile
+import app.pwhs.universalinstaller.domain.manager.ProfileManager
 import app.pwhs.universalinstaller.domain.model.SessionData
 import app.pwhs.universalinstaller.domain.model.SessionProgress
 import app.pwhs.universalinstaller.domain.model.VtResult
@@ -42,6 +44,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -168,6 +171,8 @@ class InstallViewModel(
         _batchState,
         _dialogStage,
         _mergeSplits,
+        application.dataStore.data.map { it[PreferencesKeys.INSTALLER_PROFILES] },
+        application.dataStore.data.map { it[PreferencesKeys.APP_PROFILE_MAPPING] },
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         InstallUiState(
@@ -182,6 +187,8 @@ class InstallViewModel(
             batchState = flows[8] as BatchInstallState,
             dialogStage = flows[9] as DialogStage,
             mergeSplits = flows[10] as Boolean,
+            installerProfiles = ProfileManager.parseProfiles(flows[11] as String?),
+            appProfileMapping = ProfileManager.parseMapping(flows[12] as String?),
         )
     }
         .onStart { activeController().restoreSessionsFromSavedState(viewModelScope) }
@@ -223,6 +230,67 @@ class InstallViewModel(
         if (state is BatchInstallState.Ready) {
             val uris = state.entries.map { it.uri }
             parseBatch(application, uris)
+        }
+    }
+
+    fun applyProfile(profile: InstallerProfile) {
+        viewModelScope.launch {
+            application.dataStore.edit { prefs ->
+                profile.preferredBackend?.let { backend ->
+                    when (backend) {
+                        "Root" -> {
+                            prefs[PreferencesKeys.USE_ROOT] = true
+                            prefs[PreferencesKeys.USE_SHIZUKU] = false
+                        }
+                        "Shizuku" -> {
+                            prefs[PreferencesKeys.USE_SHIZUKU] = true
+                            prefs[PreferencesKeys.USE_ROOT] = false
+                        }
+                        "Default" -> {
+                            prefs[PreferencesKeys.USE_ROOT] = false
+                            prefs[PreferencesKeys.USE_SHIZUKU] = false
+                        }
+                    }
+                }
+                
+                profile.installerPackageName?.let { pkg ->
+                    // Apply to both for simplicity in the picker
+                    prefs[PreferencesKeys.SHIZUKU_INSTALLER_PACKAGE_NAME] = pkg
+                    prefs[PreferencesKeys.ROOT_INSTALLER_PACKAGE_NAME] = pkg
+                    prefs[PreferencesKeys.SHIZUKU_SET_INSTALL_SOURCE] = pkg.isNotBlank()
+                    prefs[PreferencesKeys.ROOT_SET_INSTALL_SOURCE] = pkg.isNotBlank()
+                }
+
+                profile.replaceExisting?.let {
+                    prefs[PreferencesKeys.SHIZUKU_REPLACE_EXISTING] = it
+                    prefs[PreferencesKeys.ROOT_REPLACE_EXISTING] = it
+                }
+                profile.allowTest?.let {
+                    prefs[PreferencesKeys.SHIZUKU_ALLOW_TEST] = it
+                    prefs[PreferencesKeys.ROOT_ALLOW_TEST] = it
+                }
+                profile.requestDowngrade?.let {
+                    prefs[PreferencesKeys.SHIZUKU_REQUEST_DOWNGRADE] = it
+                    prefs[PreferencesKeys.ROOT_REQUEST_DOWNGRADE] = it
+                }
+                profile.grantAllPermissions?.let {
+                    prefs[PreferencesKeys.SHIZUKU_GRANT_ALL_PERMISSIONS] = it
+                    prefs[PreferencesKeys.ROOT_GRANT_ALL_PERMISSIONS] = it
+                }
+                profile.bypassLowTargetSdk?.let {
+                    prefs[PreferencesKeys.SHIZUKU_BYPASS_LOW_TARGET_SDK] = it
+                    prefs[PreferencesKeys.ROOT_BYPASS_LOW_TARGET_SDK] = it
+                }
+                profile.allUsers?.let {
+                    prefs[PreferencesKeys.SHIZUKU_ALL_USERS] = it
+                    prefs[PreferencesKeys.ROOT_ALL_USERS] = it
+                }
+                profile.targetUserId?.let {
+                    prefs[PreferencesKeys.INSTALL_USER_ID] = it
+                    prefs[PreferencesKeys.SHIZUKU_ALL_USERS] = false
+                    prefs[PreferencesKeys.ROOT_ALL_USERS] = false
+                }
+            }
         }
     }
 

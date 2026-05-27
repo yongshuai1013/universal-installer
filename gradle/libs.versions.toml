@@ -20,9 +20,11 @@ ktor = "3.5.0"
 nanohttpd = "2.3.1"
 room = "2.8.4"
 shizuku = "13.1.5"
+rikka-stub = "4.4.0"
 libsu = "6.0.0"
 timber = "5.0.1"
 coreSplashscreen = "1.2.0"
+kotlinx-serialization = "1.8.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -88,6 +90,7 @@ ackpine-test = { module = "ru.solrudev.ackpine:ackpine-test", version.ref = "ack
 
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+rikka-stub = { module = "dev.rikka.hidden:stub", version.ref = "rikka-stub" }
 
 # topjohnwu libsu — only pulled into the `full` flavor. Used directly for
 # `Shell.getCachedShell()?.close()` recovery and for `Shell.isAppGrantedRoot()` probing.
@@ -99,6 +102,7 @@ koin-android = { module = "io.insert-koin:koin-android" }
 koin-compose = { module = "io.insert-koin:koin-androidx-compose" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", version.ref = "hiddenapibypass" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "coreVersion" }
 
 
@@ -107,6 +111,7 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
 [bundles]
 # Shared across both flavors — no libsu here so the `store` build is libsu-free.

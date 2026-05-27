@@ -1,6 +1,7 @@
 package app.pwhs.universalinstaller.presentation.install
 
 import app.pwhs.universalinstaller.domain.model.ApkInfo
+import app.pwhs.universalinstaller.domain.model.InstallerProfile
 import app.pwhs.universalinstaller.domain.model.SessionData
 import app.pwhs.universalinstaller.domain.model.SessionProgress
 import java.util.UUID
@@ -124,4 +125,6 @@ data class InstallUiState(
     val dialogStage: DialogStage = DialogStage.None,
     /** Whether to merge split APKs from multiple files into a single session. */
     val mergeSplits: Boolean = false,
+    val installerProfiles: List<InstallerProfile> = emptyList(),
+    val appProfileMapping: Map<String, String> = emptyMap(),
 )

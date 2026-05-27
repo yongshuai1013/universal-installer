@@ -125,18 +125,17 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
         runRootShell(packageName, "pm clear $packageName", successToken = "Success")
 
     override suspend fun installTargeted(
+        context: android.content.Context,
         uris: List<android.net.Uri>,
         userId: Int,
         onProgress: (Int) -> Unit
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val targetedInstaller = app.pwhs.universalinstaller.util.HiddenApiHacks.createPackageInstallerForUser(
-                android.app.ActivityThread.currentApplication(), userId
+                context, userId
             ) ?: throw RuntimeException("Failed to get targeted PackageInstaller")
 
             // Simple session creation and installation for targeted user.
-            // This is a simplified version; for splits/OBBs we'd need more logic.
-            // For now, it provides the core feature requested in #27.
             val params = android.content.pm.PackageInstaller.SessionParams(
                 android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL
             )
@@ -144,11 +143,15 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
             targetedInstaller.openSession(sessionId).use { session ->
                 uris.forEachIndexed { index, uri ->
                     val name = "apk_$index.apk"
-                    val pfd = android.app.ActivityThread.currentApplication().contentResolver.openFileDescriptor(uri, "r")
+                    val pfd = context.contentResolver.openFileDescriptor(uri, "r")
                         ?: throw RuntimeException("Failed to open Uri: $uri")
-                    pfd.use {
-                        session.openWrite(name, 0, it.statSize).use { out ->
-                            java.io.FileInputStream(it.fileDescriptor).use { input ->
+                    pfd.use { it ->
+                        // Use reflection to avoid stub issues
+                        val statSize = it.javaClass.getMethod("getStatSize").invoke(it) as Long
+                        val fd = it.javaClass.getMethod("getFileDescriptor").invoke(it) as java.io.FileDescriptor
+                        
+                        session.openWrite(name, 0, statSize).use { out ->
+                            java.io.FileInputStream(fd).use { input ->
                                 input.copyTo(out)
                             }
                         }
@@ -156,15 +159,15 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
                     onProgress(((index + 1).toFloat() / uris.size * 100).toInt())
                 }
                 
-                // Manual commit tracking needed here, but for now we'll just commit.
-                val receiver = android.app.ActivityThread.currentApplication().let { ctx ->
-                    val intent = android.content.Intent("app.pwhs.universalinstaller.INSTALL_STATUS")
-                    android.app.PendingIntent.getBroadcast(
-                        ctx, sessionId, intent,
-                        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
-                    )
-                }
-                session.commit(receiver.intentSender)
+                val intent = android.content.Intent("app.pwhs.universalinstaller.INSTALL_STATUS")
+                val receiver = android.app.PendingIntent.getBroadcast(
+                    context, sessionId, intent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
+                ) ?: throw RuntimeException("Failed to create PendingIntent")
+                
+                // Use reflection for getIntentSender to avoid stub issues
+                val intentSender = receiver.javaClass.getMethod("getIntentSender").invoke(receiver) as android.content.IntentSender
+                session.commit(intentSender)
             }
             "Session $sessionId committed for user $userId"
         }

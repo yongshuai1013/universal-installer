@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import app.pwhs.universalinstaller.domain.model.InstallerProfile
+import app.pwhs.universalinstaller.domain.manager.ProfileManager
 import rikka.shizuku.Shizuku
 import timber.log.Timber
 
@@ -109,6 +111,10 @@ object PreferencesKeys {
     // APK Extractor options
     val APK_EXTRACTOR_OUTPUT_PATH = stringPreferencesKey("apk_extractor_output_path")
     val APK_EXTRACTOR_FILENAME_TEMPLATE = stringPreferencesKey("apk_extractor_filename_template")
+
+    // Installer Profiles
+    val INSTALLER_PROFILES = stringPreferencesKey("installer_profiles")
+    val APP_PROFILE_MAPPING = stringPreferencesKey("app_profile_mapping")
 }
 
 data class SyncOptions(
@@ -180,6 +186,8 @@ data class SettingUiState(
     val autoConfirmExternalInstall: Boolean = false,
     val extractorOutputPath: String = "",
     val extractorFilenameTemplate: String = "{name}-{version}",
+    val installerProfiles: List<InstallerProfile> = emptyList(),
+    val appProfileMapping: Map<String, String> = emptyMap(),
     /**
      * True when the device has at least one biometric or device-credential enrolled.
      * Used to greyly inform the user that the toggles will be no-ops until they
@@ -305,8 +313,13 @@ class SettingViewModel(
             )
         },
         dataStore.data.map { prefs ->
-            (prefs[PreferencesKeys.APK_EXTRACTOR_OUTPUT_PATH] ?: "") to
-                (prefs[PreferencesKeys.APK_EXTRACTOR_FILENAME_TEMPLATE] ?: "{name}-{version}")
+            // Actually, let's just use a data class or a List to group them.
+            listOf(
+                prefs[PreferencesKeys.APK_EXTRACTOR_OUTPUT_PATH] ?: "",
+                prefs[PreferencesKeys.APK_EXTRACTOR_FILENAME_TEMPLATE] ?: "{name}-{version}",
+                prefs[PreferencesKeys.INSTALLER_PROFILES] ?: "",
+                prefs[PreferencesKeys.APP_PROFILE_MAPPING] ?: ""
+            )
         },
     ) { flows ->
         val theme = flows[0] as ThemeMode
@@ -329,7 +342,12 @@ class SettingViewModel(
         val autoOpen = tripleFlags.second
         val autoConfirm = tripleFlags.third
         @Suppress("UNCHECKED_CAST")
-        val extractorFlags = flows[14] as Pair<String, String>
+        val extractorAndProfiles = flows[14] as List<String>
+        val extractorPath = extractorAndProfiles[0]
+        val extractorTemplate = extractorAndProfiles[1]
+        val profilesJson = extractorAndProfiles[2]
+        val mappingJson = extractorAndProfiles[3]
+
         val versionName = try {
             application.packageManager
                 .getPackageInfo(application.packageName, 0)
@@ -360,8 +378,10 @@ class SettingViewModel(
                 .BiometricGate.canAuthenticate(application),
             dialogInstallMode = dialogMode,
             autoConfirmExternalInstall = autoConfirm,
-            extractorOutputPath = extractorFlags.first,
-            extractorFilenameTemplate = extractorFlags.second,
+            extractorOutputPath = extractorPath,
+            extractorFilenameTemplate = extractorTemplate,
+            installerProfiles = ProfileManager.parseProfiles(profilesJson),
+            appProfileMapping = ProfileManager.parseMapping(mappingJson),
         )
     }.stateIn(
         scope = viewModelScope,
@@ -601,6 +621,46 @@ class SettingViewModel(
         viewModelScope.launch {
             dataStore.edit { prefs ->
                 prefs[PreferencesKeys.APK_EXTRACTOR_FILENAME_TEMPLATE] = template
+            }
+        }
+    }
+
+    fun saveProfile(profile: InstallerProfile) {
+        viewModelScope.launch {
+            dataStore.edit { prefs ->
+                val current = ProfileManager.parseProfiles(prefs[PreferencesKeys.INSTALLER_PROFILES])
+                val updated = current.filter { it.id != profile.id } + profile
+                prefs[PreferencesKeys.INSTALLER_PROFILES] = ProfileManager.serializeProfiles(updated)
+            }
+        }
+    }
+
+    fun deleteProfile(profileId: String) {
+        viewModelScope.launch {
+            dataStore.edit { prefs ->
+                val current = ProfileManager.parseProfiles(prefs[PreferencesKeys.INSTALLER_PROFILES])
+                val updated = current.filter { it.id != profileId }
+                prefs[PreferencesKeys.INSTALLER_PROFILES] = ProfileManager.serializeProfiles(updated)
+                
+                // Also clean up mapping
+                val mapping = ProfileManager.parseMapping(prefs[PreferencesKeys.APP_PROFILE_MAPPING]).toMutableMap()
+                val keysToRemove = mapping.filter { it.value == profileId }.keys
+                keysToRemove.forEach { mapping.remove(it) }
+                prefs[PreferencesKeys.APP_PROFILE_MAPPING] = ProfileManager.serializeMapping(mapping)
+            }
+        }
+    }
+
+    fun setAppProfileMapping(packageName: String, profileId: String?) {
+        viewModelScope.launch {
+            dataStore.edit { prefs ->
+                val current = ProfileManager.parseMapping(prefs[PreferencesKeys.APP_PROFILE_MAPPING]).toMutableMap()
+                if (profileId != null) {
+                    current[packageName] = profileId
+                } else {
+                    current.remove(packageName)
+                }
+                prefs[PreferencesKeys.APP_PROFILE_MAPPING] = ProfileManager.serializeMapping(current)
             }
         }
     }

@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.kotlinx.serialization)
     id("kotlin-parcelize")
 }
 
@@ -133,7 +134,9 @@ dependencies {
     implementation(libs.bottom.sheet)
 
     implementation(libs.timber)
+    compileOnly(libs.rikka.stub)
     implementation(libs.hiddenapibypass)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)

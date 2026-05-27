@@ -2,7 +2,6 @@ package app.pwhs.universalinstaller.util
 
 import android.content.Context
 import android.content.pm.PackageInstaller
-import ru.solrudev.ackpine.impl.installer.PackageInstallerImpl
 import ru.solrudev.ackpine.impl.services.PackageInstallerService
 import ru.solrudev.ackpine.installer.PackageInstaller as AckpinePackageInstaller
 import java.util.UUID
