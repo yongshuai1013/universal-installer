@@ -85,6 +85,18 @@ interface InstallerBackendFactory {
         userId: Int,
         onProgress: (Int) -> Unit = {}
     ): Result<String>
+
+    /**
+     * Toggles preferred-activity registration via libsu RootService so [component] becomes
+     * the default APK installer. lock=false clears our own preferred activities, restoring
+     * the chooser. Store flavor returns failure — Shizuku path is handled separately by
+     * [app.pwhs.universalinstaller.util.ShizukuDefaultInstaller].
+     */
+    suspend fun setDefaultInstallerViaRoot(
+        context: android.content.Context,
+        component: android.content.ComponentName,
+        lock: Boolean,
+    ): Result<Unit>
 }
 
 enum class SystemAppMethod {

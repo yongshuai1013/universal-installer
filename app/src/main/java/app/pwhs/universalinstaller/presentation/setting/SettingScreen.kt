@@ -69,6 +69,12 @@ fun SettingScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { stringRes ->
+            android.widget.Toast.makeText(context, stringRes, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     SettingUi(
         modifier = modifier,
         uiState = uiState,
@@ -225,7 +231,11 @@ private fun SettingUi(
                         subtitle = stringResource(R.string.setting_default_installer_subtitle),
                         checked = uiState.isDefaultInstaller,
                         onCheckedChange = onDefaultInstallerChanged,
-                        enabled = uiState.shizukuAvailable || uiState.rootState == RootState.READY
+                        // Don't gate on shizukuAvailable here — that's true at NO_PERMISSION too,
+                        // and the toggle would silently no-op. Require the backend to be actually
+                        // ready; tapping the disabled-state hint covers the "needs grant" case.
+                        enabled = uiState.shizukuState == ShizukuState.READY ||
+                                uiState.rootState == RootState.READY
                     )
                 }
             }

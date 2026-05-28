@@ -88,6 +88,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        aidl = true
     }
 
     dependenciesInfo {
@@ -149,6 +150,7 @@ dependencies {
     // types or native libraries, so Play Protect / static analysis has nothing to flag.
     "fullImplementation"(libs.bundles.ackpine.libsu)
     "fullImplementation"(libs.libsu.core)
+    "fullImplementation"(libs.libsu.service)
 
     implementation(libs.nanohttpd)
     implementation(libs.zxing.core)

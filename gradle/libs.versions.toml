@@ -95,6 +95,9 @@ rikka-stub = { module = "dev.rikka.hidden:stub", version.ref = "rikka-stub" }
 # topjohnwu libsu — only pulled into the `full` flavor. Used directly for
 # `Shell.getCachedShell()?.close()` recovery and for `Shell.isAppGrantedRoot()` probing.
 libsu-core = { module = "com.github.topjohnwu.libsu:core", version.ref = "libsu" }
+# libsu RootService — bound service running as UID 0 so we can call hidden IPackageManager
+# methods (addPreferredActivity etc.) that the app process can't reach even with shell auth.
+libsu-service = { module = "com.github.topjohnwu.libsu:service", version.ref = "libsu" }
 
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin-bom" }
 koin-core = { module = "io.insert-koin:koin-core" }

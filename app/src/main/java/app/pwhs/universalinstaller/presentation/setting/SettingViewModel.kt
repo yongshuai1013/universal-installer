@@ -17,13 +17,18 @@ import androidx.lifecycle.viewModelScope
 import app.pwhs.universalinstaller.presentation.install.controller.InstallerBackendFactory
 import app.pwhs.universalinstaller.presentation.install.controller.RootState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import app.pwhs.universalinstaller.R
 import app.pwhs.universalinstaller.domain.model.InstallerProfile
 import app.pwhs.universalinstaller.domain.manager.ProfileManager
 import rikka.shizuku.Shizuku
@@ -154,6 +159,8 @@ data class ShizukuOptions(
 
 const val DEFAULT_INSTALLER_PACKAGE_NAME = "com.android.vending"
 
+private const val SHIZUKU_PERMISSION_REQ_CODE = 0xA17
+
 data class RootOptions(
     val bypassLowTargetSdk: Boolean = false,
     val allowTest: Boolean = false,
@@ -223,10 +230,31 @@ class SettingViewModel(
         updateShizukuState()
     }
 
+    private val requestPermissionResultListener =
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode != SHIZUKU_PERMISSION_REQ_CODE) return@OnRequestPermissionResultListener
+            updateShizukuState()
+            if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                viewModelScope.launch {
+                    dataStore.edit { prefs -> prefs[PreferencesKeys.USE_SHIZUKU] = true }
+                }
+            } else {
+                viewModelScope.launch {
+                    _events.send(R.string.setting_shizuku_permission_denied)
+                }
+            }
+        }
+
+    // One-shot UI events (toast/snackbar). Channel so events fire once per send, even
+    // when the screen is briefly unmounted, without coalescing or being missed.
+    private val _events = Channel<Int>(Channel.BUFFERED)
+    val events: Flow<Int> = _events.receiveAsFlow()
+
     init {
         updateShizukuState()
         Shizuku.addBinderReceivedListener(binderReceivedListener)
         Shizuku.addBinderDeadListener(binderDeadListener)
+        Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
 
         // Cheap non-blocking root probe — does not trigger a SuperUser prompt.
         if (backendFactory.rootSupportCompiledIn) {
@@ -241,6 +269,7 @@ class SettingViewModel(
         super.onCleared()
         Shizuku.removeBinderReceivedListener(binderReceivedListener)
         Shizuku.removeBinderDeadListener(binderDeadListener)
+        Shizuku.removeRequestPermissionResultListener(requestPermissionResultListener)
     }
 
     fun setThemeMode(mode: ThemeMode) {
@@ -262,8 +291,41 @@ class SettingViewModel(
     }
 
     fun setUseShizuku(enabled: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { prefs -> prefs[PreferencesKeys.USE_SHIZUKU] = enabled }
+        if (!enabled) {
+            viewModelScope.launch {
+                dataStore.edit { prefs -> prefs[PreferencesKeys.USE_SHIZUKU] = false }
+            }
+            return
+        }
+        // Re-probe before deciding — binder state may have changed since last update.
+        updateShizukuState()
+        when (_shizukuState.value) {
+            ShizukuState.READY -> viewModelScope.launch {
+                dataStore.edit { prefs -> prefs[PreferencesKeys.USE_SHIZUKU] = true }
+            }
+            ShizukuState.NO_PERMISSION -> requestShizukuPermission()
+            ShizukuState.NOT_RUNNING -> viewModelScope.launch {
+                _events.send(R.string.setting_shizuku_start_service_hint)
+            }
+            ShizukuState.NOT_INSTALLED -> viewModelScope.launch {
+                _events.send(R.string.setting_shizuku_install_hint)
+            }
+            ShizukuState.UNSUPPORTED -> viewModelScope.launch {
+                _events.send(R.string.setting_shizuku_unsupported)
+            }
+        }
+    }
+
+    private fun requestShizukuPermission() {
+        try {
+            // Shizuku.requestPermission posts to the manager app; the result comes back
+            // via requestPermissionResultListener which then flips USE_SHIZUKU on grant.
+            Shizuku.requestPermission(SHIZUKU_PERMISSION_REQ_CODE)
+        } catch (t: Throwable) {
+            Timber.w(t, "Shizuku.requestPermission threw")
+            viewModelScope.launch {
+                _events.send(R.string.setting_shizuku_start_service_hint)
+            }
         }
     }
 
@@ -417,76 +479,81 @@ class SettingViewModel(
     private val _isDefaultInstaller = MutableStateFlow(false)
 
     /**
-     * Toggles Universal Installer as the default system installer.
-     * Requires Root or Shizuku (ADB).
+     * Toggles Universal Installer's DialogInstallActivity as the preferred handler for APK
+     * install intents — the same mechanism Android uses when the user taps "Always" in the
+     * resolver dialog. Implemented over either Shizuku (in-process via [ShizukuDefaultInstaller],
+     * runs as shell UID 2000) or libsu RootService (separate UID-0 process via the backend
+     * factory). We do not disable the system installer package — that's a sledgehammer most
+     * ROMs reject and isn't what "default" means in Android's resolver model.
      */
     fun toggleDefaultInstaller(enabled: Boolean) {
+        updateShizukuState()
+        val shizukuReady = _shizukuState.value == ShizukuState.READY
+        val rootReady = _rootState.value == RootState.READY
+
+        if (!shizukuReady && !rootReady) {
+            when (_shizukuState.value) {
+                ShizukuState.NO_PERMISSION -> requestShizukuPermission()
+                ShizukuState.NOT_RUNNING -> viewModelScope.launch {
+                    _events.send(R.string.setting_shizuku_start_service_hint)
+                }
+                else -> viewModelScope.launch {
+                    _events.send(R.string.setting_default_installer_needs_backend)
+                }
+            }
+            return
+        }
+
+        val component = defaultInstallerComponent()
         viewModelScope.launch(Dispatchers.IO) {
-            val systemInstallers = getSystemInstallerPackages()
-            if (systemInstallers.isEmpty()) {
-                Timber.w("No system installer found to toggle")
-                return@launch
+            val result = if (shizukuReady) {
+                app.pwhs.universalinstaller.util.ShizukuDefaultInstaller
+                    .setDefaultInstaller(component, enabled)
+            } else {
+                backendFactory.setDefaultInstallerViaRoot(application, component, enabled)
             }
-
-            try {
-                val newState = if (enabled) {
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                } else {
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER
+            result
+                .onSuccess {
+                    updateDefaultInstallerStatus()
+                    _events.send(
+                        if (enabled) R.string.setting_default_installer_enabled
+                        else R.string.setting_default_installer_disabled,
+                    )
                 }
-
-                if (_shizukuState.value == ShizukuState.READY) {
-                    systemInstallers.forEach { pkg ->
-                        app.pwhs.universalinstaller.util.HiddenApiHacks.setApplicationEnabledSetting(pkg, newState, 0)
-                    }
-                } else if (_rootState.value == RootState.READY) {
-                    systemInstallers.forEach { pkg ->
-                        backendFactory.setSystemAppEnabled(pkg, enabled)
-                    }
+                .onFailure { e ->
+                    Timber.e(e, "Failed to toggle default installer")
+                    _events.send(R.string.setting_default_installer_failed)
                 }
-                updateDefaultInstallerStatus()
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to toggle default installer")
-            }
         }
     }
 
+    private fun defaultInstallerComponent(): android.content.ComponentName =
+        android.content.ComponentName(
+            application,
+            "app.pwhs.universalinstaller.presentation.install.DialogInstallActivity",
+        )
+
+    /**
+     * "Default installer" = our DialogInstallActivity is what `resolveActivity` returns for
+     * a fresh APK-VIEW intent (i.e. the system's preferred-activity store points at us).
+     * `MATCH_DEFAULT_ONLY` is the same flag the resolver uses internally.
+     */
     private fun updateDefaultInstallerStatus() {
         viewModelScope.launch(Dispatchers.IO) {
-            val systemInstallers = getSystemInstallerPackages()
-            if (systemInstallers.isEmpty()) {
-                _isDefaultInstaller.value = false
-                return@launch
+            val probe = Intent(Intent.ACTION_VIEW).apply {
+                addCategory(Intent.CATEGORY_DEFAULT)
+                setDataAndType(
+                    android.net.Uri.parse("content://storage/emulated/0/test.apk"),
+                    "application/vnd.android.package-archive",
+                )
             }
-            val allDisabled = systemInstallers.all { pkg ->
-                try {
-                    val info = application.packageManager.getApplicationInfo(pkg, 0)
-                    !info.enabled
-                } catch (e: Exception) {
-                    // If we can't find it, assume it's not a concern
-                    true
-                }
+            val resolved = try {
+                application.packageManager.resolveActivity(probe, PackageManager.MATCH_DEFAULT_ONLY)
+            } catch (t: Throwable) {
+                Timber.w(t, "resolveActivity failed")
+                null
             }
-            _isDefaultInstaller.value = allDisabled
-        }
-    }
-
-    private fun getSystemInstallerPackages(): List<String> {
-        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-            val file = java.io.File(application.cacheDir, "test.apk")
-            setDataAndType(android.net.Uri.fromFile(file), "application/vnd.android.package-archive")
-        }
-        val resolveInfos = application.packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
-        return resolveInfos.map { it.activityInfo.packageName }
-            .filter { it != application.packageName && isSystemApp(it) }
-    }
-
-    private fun isSystemApp(packageName: String): Boolean {
-        return try {
-            val info = application.packageManager.getApplicationInfo(packageName, 0)
-            (info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-        } catch (e: Exception) {
-            false
+            _isDefaultInstaller.value = resolved?.activityInfo?.packageName == application.packageName
         }
     }
 
@@ -619,7 +686,10 @@ class SettingViewModel(
             themeMode = theme,
             dynamicColor = dynamicColor,
             amoledMode = amoledMode,
-            useShizuku = useShizuku && shizukuState == ShizukuState.READY,
+            // Reflect the raw preference so the switch flips immediately when toggled.
+            // Functional gating (do we actually invoke the Shizuku backend?) is enforced
+            // separately at install time via shizukuAvailable / BackendSelfHeal.
+            useShizuku = useShizuku,
             useRoot = useRoot && (rootState == RootState.READY || rootState == RootState.UNKNOWN),
             virusTotalApiKey = vtKey,
             deleteApkAfterInstall = deleteApk,

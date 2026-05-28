@@ -1,13 +1,27 @@
 package app.pwhs.universalinstaller.presentation.install.controller
 
 import android.app.Application
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import app.pwhs.universalinstaller.data.local.InstallHistoryDao
 import app.pwhs.universalinstaller.domain.repository.SessionDataRepository
+import app.pwhs.universalinstaller.privileged.IPrivilegedService
+import app.pwhs.universalinstaller.privileged.PrivilegedRootService
 import com.topjohnwu.superuser.Shell
+import com.topjohnwu.superuser.ipc.RootService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import ru.solrudev.ackpine.installer.PackageInstaller
 import timber.log.Timber
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class FullInstallerBackendFactory : InstallerBackendFactory {
 
@@ -175,6 +189,62 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
                 session.commit(intentSender)
             }
             "Session $sessionId committed for user $userId"
+        }
+    }
+
+    // Cached RootService binder so a second toggle doesn't pay the spawn cost again. The
+    // mutex guards against two concurrent toggles racing the bind. Cleared lazily on death.
+    @Volatile private var privilegedService: IPrivilegedService? = null
+    @Volatile private var privilegedConnection: ServiceConnection? = null
+    private val bindMutex = Mutex()
+
+    override suspend fun setDefaultInstallerViaRoot(
+        context: Context,
+        component: ComponentName,
+        lock: Boolean,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val service = obtainPrivilegedService(context.applicationContext as Application)
+            service.setDefaultInstaller(component, lock)
+        }
+    }
+
+    private suspend fun obtainPrivilegedService(application: Application): IPrivilegedService {
+        privilegedService?.let { cached ->
+            // pingBinder catches the case where the root process was killed since last use.
+            if (cached.asBinder().pingBinder()) return cached
+            privilegedService = null
+            privilegedConnection = null
+        }
+        return bindMutex.withLock {
+            privilegedService?.let { cached ->
+                if (cached.asBinder().pingBinder()) return@withLock cached
+            }
+            withTimeout(15_000) {
+                suspendCancellableCoroutine { cont ->
+                    val intent = Intent(application, PrivilegedRootService::class.java)
+                    val connection = object : ServiceConnection {
+                        override fun onServiceConnected(name: ComponentName?, binder: IBinder) {
+                            val svc = IPrivilegedService.Stub.asInterface(binder)
+                            privilegedService = svc
+                            privilegedConnection = this
+                            if (cont.isActive) cont.resume(svc)
+                        }
+                        override fun onServiceDisconnected(name: ComponentName?) {
+                            privilegedService = null
+                            privilegedConnection = null
+                        }
+                    }
+                    cont.invokeOnCancellation {
+                        runCatching { RootService.unbind(connection) }
+                    }
+                    try {
+                        RootService.bind(intent, connection)
+                    } catch (t: Throwable) {
+                        if (cont.isActive) cont.resumeWithException(t)
+                    }
+                }
+            }
         }
     }
 
