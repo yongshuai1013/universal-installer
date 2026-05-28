@@ -9,6 +9,7 @@ import app.pwhs.universalinstaller.util.BiometricGate
 import kotlinx.coroutines.flow.map
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -363,6 +364,20 @@ private fun InstallUi(
             // Re-check on return — user may or may not have granted.
             onStartDeviceScan()
         }
+
+    // The launcher callback only fires when the user comes back from system Settings via the
+    // Back button. PermissionMonitor's REORDER_TO_FRONT / notification paths bypass the
+    // launcher entirely, so without this resume-effect the sheet would stay stuck in
+    // PermissionNeeded until the user closes and re-opens it. Re-trigger the scan on every
+    // resume while the sheet is in PermissionNeeded — `startDeviceScan` itself re-checks the
+    // permission and is cheap to call.
+    val isAwaitingStoragePermission = uiState.scanState is ScanState.PermissionNeeded
+    LifecycleResumeEffect(isAwaitingStoragePermission) {
+        if (isAwaitingStoragePermission && ApkScanner.hasAllFilesAccess(context)) {
+            onStartDeviceScan()
+        }
+        onPauseOrDispose {}
+    }
 
     FoundApksSheet(
         scanState = uiState.scanState,

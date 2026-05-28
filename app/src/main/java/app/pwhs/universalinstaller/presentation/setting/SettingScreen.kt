@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Fingerprint
@@ -30,7 +31,10 @@ import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.SettingsApplications
 import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.WifiTethering
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,7 +51,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -240,6 +246,136 @@ private fun SettingUi(
                 }
             }
 
+            // ── Shizuku Options Section (visible only when Shizuku is the chosen backend) ──
+            // These are the *defaults* the install pipeline reads when no per-app profile
+            // overrides them. They were removed in the profile-screen refactor but the
+            // backend logic still reads these prefs, so without this UI the user has no way
+            // to flip them globally. Restored to match the same flag set ProfileEditScreen
+            // already exposes.
+            if (uiState.useShizuku) {
+                item {
+                    SettingsSection(
+                        title = stringResource(R.string.setting_section_shizuku_options),
+                        icon = Icons.Rounded.AdminPanelSettings,
+                    ) {
+                        OptionGroupHeader(stringResource(R.string.setting_shizuku_options_install_group))
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_replace),
+                            subtitle = stringResource(R.string.setting_shizuku_replace_sub),
+                            checked = uiState.shizukuOptions.replaceExisting,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_REPLACE_EXISTING, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_downgrade),
+                            subtitle = stringResource(R.string.setting_shizuku_downgrade_sub),
+                            checked = uiState.shizukuOptions.requestDowngrade,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_REQUEST_DOWNGRADE, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_grant_permissions),
+                            subtitle = stringResource(R.string.setting_shizuku_grant_permissions_sub),
+                            checked = uiState.shizukuOptions.grantAllPermissions,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_GRANT_ALL_PERMISSIONS, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_allow_test),
+                            subtitle = stringResource(R.string.setting_shizuku_allow_test_sub),
+                            checked = uiState.shizukuOptions.allowTest,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_ALLOW_TEST, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_bypass_sdk),
+                            subtitle = stringResource(R.string.setting_shizuku_bypass_sdk_sub),
+                            checked = uiState.shizukuOptions.bypassLowTargetSdk,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_BYPASS_LOW_TARGET_SDK, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_all_users),
+                            subtitle = stringResource(R.string.setting_shizuku_all_users_sub),
+                            checked = uiState.shizukuOptions.allUsers,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_ALL_USERS, it) },
+                        )
+                        InstallSourceItem(
+                            title = stringResource(R.string.setting_shizuku_set_source),
+                            subtitle = stringResource(R.string.setting_shizuku_set_source_sub),
+                            enabled = uiState.shizukuOptions.setInstallSource,
+                            installerPackageName = uiState.shizukuOptions.installerPackageName,
+                            onToggle = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_SET_INSTALL_SOURCE, it) },
+                            onInstallerChange = onShizukuInstallerChanged,
+                        )
+
+                        OptionGroupHeader(stringResource(R.string.setting_shizuku_options_uninstall_group))
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_uninstall_keep_data),
+                            subtitle = stringResource(R.string.setting_shizuku_uninstall_keep_data_sub),
+                            checked = uiState.shizukuOptions.uninstallKeepData,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_UNINSTALL_KEEP_DATA, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_shizuku_uninstall_all_users),
+                            subtitle = stringResource(R.string.setting_shizuku_uninstall_all_users_sub),
+                            checked = uiState.shizukuOptions.uninstallAllUsers,
+                            onCheckedChange = { onShizukuOptionChanged(PreferencesKeys.SHIZUKU_UNINSTALL_ALL_USERS, it) },
+                        )
+                    }
+                }
+            }
+
+            // ── Root Options Section (full flavor only, visible when Root is the chosen backend) ──
+            if (uiState.rootSupported && uiState.useRoot) {
+                item {
+                    SettingsSection(
+                        title = stringResource(R.string.setting_section_root_options),
+                        icon = Icons.Rounded.Key,
+                    ) {
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_root_replace),
+                            subtitle = stringResource(R.string.setting_root_replace_sub),
+                            checked = uiState.rootOptions.replaceExisting,
+                            onCheckedChange = { onRootOptionChanged(PreferencesKeys.ROOT_REPLACE_EXISTING, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_root_downgrade),
+                            subtitle = stringResource(R.string.setting_root_downgrade_sub),
+                            checked = uiState.rootOptions.requestDowngrade,
+                            onCheckedChange = { onRootOptionChanged(PreferencesKeys.ROOT_REQUEST_DOWNGRADE, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_root_grant_permissions),
+                            subtitle = stringResource(R.string.setting_root_grant_permissions_sub),
+                            checked = uiState.rootOptions.grantAllPermissions,
+                            onCheckedChange = { onRootOptionChanged(PreferencesKeys.ROOT_GRANT_ALL_PERMISSIONS, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_root_allow_test),
+                            subtitle = stringResource(R.string.setting_root_allow_test_sub),
+                            checked = uiState.rootOptions.allowTest,
+                            onCheckedChange = { onRootOptionChanged(PreferencesKeys.ROOT_ALLOW_TEST, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_root_bypass_sdk),
+                            subtitle = stringResource(R.string.setting_root_bypass_sdk_sub),
+                            checked = uiState.rootOptions.bypassLowTargetSdk,
+                            onCheckedChange = { onRootOptionChanged(PreferencesKeys.ROOT_BYPASS_LOW_TARGET_SDK, it) },
+                        )
+                        OptionSwitch(
+                            title = stringResource(R.string.setting_root_all_users),
+                            subtitle = stringResource(R.string.setting_root_all_users_sub),
+                            checked = uiState.rootOptions.allUsers,
+                            onCheckedChange = { onRootOptionChanged(PreferencesKeys.ROOT_ALL_USERS, it) },
+                        )
+                        InstallSourceItem(
+                            title = stringResource(R.string.setting_root_set_source),
+                            subtitle = stringResource(R.string.setting_root_set_source_sub),
+                            enabled = uiState.rootOptions.setInstallSource,
+                            installerPackageName = uiState.rootOptions.installerPackageName,
+                            onToggle = { onRootOptionChanged(PreferencesKeys.ROOT_SET_INSTALL_SOURCE, it) },
+                            onInstallerChange = onRootInstallerChanged,
+                        )
+                    }
+                }
+            }
+
             // ── Profiles Section ─────────────────────────
             item {
                 SettingsSection(
@@ -418,6 +554,133 @@ private fun SettingUi(
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OptionGroupHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+}
+
+@Composable
+private fun OptionSwitch(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(title, style = MaterialTheme.typography.bodyMedium) },
+        supportingContent = {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable { onCheckedChange(!checked) },
+    )
+}
+
+private data class InstallerPreset(val packageName: String, val label: String)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InstallSourceItem(
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    installerPackageName: String,
+    onToggle: (Boolean) -> Unit,
+    onInstallerChange: (String) -> Unit,
+) {
+    val presets = listOf(
+        InstallerPreset("com.android.vending", stringResource(R.string.setting_shizuku_installer_preset_play)),
+        InstallerPreset("com.aurora.store", stringResource(R.string.setting_shizuku_installer_preset_aurora)),
+        InstallerPreset("org.fdroid.fdroid", stringResource(R.string.setting_shizuku_installer_preset_fdroid)),
+        InstallerPreset("com.amazon.venezia", stringResource(R.string.setting_shizuku_installer_preset_amazon)),
+        InstallerPreset("com.sec.android.app.samsungapps", stringResource(R.string.setting_shizuku_installer_preset_samsung)),
+        InstallerPreset("com.huawei.appmarket", stringResource(R.string.setting_shizuku_installer_preset_huawei)),
+        InstallerPreset("com.xiaomi.market", stringResource(R.string.setting_shizuku_installer_preset_xiaomi)),
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ListItem(
+            headlineContent = { Text(title, style = MaterialTheme.typography.bodyMedium) },
+            supportingContent = {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailingContent = { Switch(checked = enabled, onCheckedChange = onToggle) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+
+        if (enabled) {
+            var expanded by remember { mutableStateOf(false) }
+            // Re-key on installerPackageName so an external pref reset (e.g. profile apply)
+            // flows into the text field instead of getting clobbered by the local copy.
+            var text by remember(installerPackageName) { mutableStateOf(installerPackageName) }
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it
+                        onInstallerChange(it)
+                    },
+                    modifier = Modifier
+                        .menuAnchor(
+                            androidx.compose.material3.ExposedDropdownMenuAnchorType.PrimaryEditable,
+                            enabled = true,
+                        )
+                        .fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.setting_shizuku_installer_label)) },
+                    leadingIcon = { Icon(Icons.Rounded.Badge, contentDescription = null) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                ) {
+                    presets.forEach { preset ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(preset.label, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        text = preset.packageName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
+                            onClick = {
+                                text = preset.packageName
+                                onInstallerChange(preset.packageName)
+                                expanded = false
+                            },
+                        )
+                    }
                 }
             }
         }
