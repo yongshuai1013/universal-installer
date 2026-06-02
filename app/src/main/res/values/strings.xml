@@ -44,11 +44,6 @@
     <string name="biometric_install_sub">Authenticate to install this package</string>
     <string name="biometric_uninstall_title">Confirm uninstall</string>
     <string name="biometric_uninstall_sub">Authenticate to uninstall %1$s</string>
-    <string name="setting_biometric_install">Require auth to install</string>
-    <string name="setting_biometric_install_sub">Confirm with fingerprint or device unlock before each install</string>
-    <string name="setting_biometric_uninstall">Require auth to uninstall</string>
-    <string name="setting_biometric_uninstall_sub">Confirm with fingerprint or device unlock before each uninstall</string>
-    <string name="setting_biometric_unavailable">No fingerprint or device unlock enrolled — toggle has no effect until you set one up.</string>
     <string name="manage_action_clear_data">Clear all data</string>
     <string name="manage_action_clear_data_sub">Reset the app — wipes settings, accounts, and cache</string>
     <string name="manage_action_clear_data_done">Cleared data for %1$s</string>
@@ -206,13 +201,9 @@
     <string name="apk_info_label_min_sdk">Min SDK</string>
     <string name="apk_info_label_target_sdk">Target SDK</string>
     <string name="apk_info_version_chip">v%s</string>
-    <string name="apk_info_min_sdk_chip" translatable="false">Android %s+</string>
     <string name="apk_info_splits_count">%d splits</string>
-    <string name="apk_info_obb_chip" translatable="false">%d OBB</string>
     <string name="apk_info_obb_attach_title">Attach OBB files (optional)</string>
-    <string name="apk_info_obb_attach_desc">Pick .obb files that belong to this app — they\'ll be copied to Android/obb after install.</string>
     <string name="apk_info_obb_attach_button">Add OBB file</string>
-    <string name="apk_info_obb_attach_remove">Remove</string>
     <string name="obb_copy_title">Copying OBB files…</string>
     <string name="obb_copy_progress" translatable="false">%1$s / %2$s · %3$d%%</string>
     <string name="obb_copy_done">%1$s · %2$d OBB file(s) copied</string>
@@ -229,40 +220,19 @@
     <string name="obb_notif_done_text">%d file(s) placed in Android/obb</string>
     <string name="obb_notif_failed_title">OBB copy failed · %s</string>
     <string name="apk_info_version_detail" translatable="false">%1$s (%2$d)</string>
-    <string name="apk_info_sdk_detail">API %1$d (Android %2$s)</string>
     <string name="apk_info_section_architectures">Supported Architectures</string>
     <string name="apk_info_section_permissions">Permissions (%d)</string>
-    <string name="apk_info_permissions_more">… and %d more</string>
     <string name="apk_info_section_splits">Splits (%d)</string>
-    <string name="apk_info_split_base">Base</string>
-    <string name="apk_info_split_libs">Native Library</string>
-    <string name="apk_info_split_locale">Language</string>
-    <string name="apk_info_split_density">Screen Density</string>
-    <string name="apk_info_split_feature">Feature</string>
-    <string name="apk_info_split_other">Other</string>
-    <string name="apk_info_split_show_less">Show less</string>
     <string name="apk_info_vt_scan_title">VirusTotal Scan</string>
     <string name="apk_info_vt_scanning">Scanning file…</string>
     <string name="apk_info_vt_clean">No threats detected</string>
     <string name="apk_info_vt_malicious">%d engine(s) detected threats!</string>
     <string name="apk_info_vt_suspicious">%d engine(s) flagged as suspicious</string>
     <string name="apk_info_vt_not_found">File not found in VirusTotal database</string>
-    <string name="apk_info_vt_error">Scan error: %s</string>
     <string name="apk_info_vt_no_api_key">No VirusTotal API key configured. Open Settings → Security → VirusTotal API Key to add one — free key at virustotal.com/gui/my-apikey.</string>
     <string name="apk_info_vt_uploading">Uploading to VirusTotal… %d%%</string>
-    <string name="apk_info_vt_queued">Queued on VirusTotal…</string>
-    <string name="apk_info_vt_analyzing">Analyzing across engines…</string>
-    <string name="apk_info_vt_too_large">File too large (%1$s). VirusTotal accepts up to %2$d MB.</string>
     <string name="apk_info_vt_check_button">Check with VirusTotal</string>
     <string name="apk_info_vt_rescan_button">Scan again</string>
-    <string name="apk_info_vt_view_report">View full report on VirusTotal</string>
-    <string name="apk_info_vt_label_malicious">Malicious</string>
-    <string name="apk_info_vt_label_suspicious">Suspicious</string>
-    <string name="apk_info_vt_label_harmless">Harmless</string>
-    <string name="apk_info_vt_label_undetected">Undetected</string>
-    <string name="apk_info_vt_total_engines">%d engines scanned</string>
-    <string name="apk_info_vt_show_all_engines">Show all %d engines</string>
-    <string name="apk_info_vt_hide_engines">Hide details</string>
     <string name="vt_notif_channel_name">VirusTotal scans</string>
     <string name="vt_notif_channel_description">Progress of VirusTotal uploads and analyses</string>
     <string name="vt_notif_hashing">Hashing file…</string>
@@ -341,7 +311,6 @@
     <string name="setting_shizuku_start_service_hint">Open the Shizuku app and start the service first</string>
     <string name="setting_shizuku_install_hint">Install Shizuku from Play Store to use this backend</string>
     <string name="setting_delete_apk_title">Delete APK after install</string>
-    <string name="setting_delete_apk_subtitle">Automatically delete the source file after successful installation</string>
     <string name="setting_auto_open_title">Open app after install</string>
     <string name="setting_auto_open_subtitle">Launch the installed app from the success screen — with a 3-second cancellable countdown</string>
     <string name="setting_auto_confirm_title">Auto-confirm external installs</string>
@@ -349,17 +318,9 @@
     <string name="setting_default_installer_title">Set as default installer</string>
     <string name="setting_default_installer_subtitle">Disable system installer to always use Universal Installer for APK files (requires Shizuku or Root)</string>
     <string name="setting_default_installer_needs_backend">Enable Shizuku or Root first to change the default installer</string>
-    <string name="setting_default_installer_no_target">No system installer found to disable</string>
     <string name="setting_default_installer_enabled">Universal Installer is now the default</string>
     <string name="setting_default_installer_disabled">System installer restored</string>
     <string name="setting_default_installer_failed">Failed to change default installer</string>
-    <string name="setting_section_extractor">APK Extractor</string>
-    <string name="setting_extractor_path_title">Output folder</string>
-    <string name="setting_extractor_path_subtitle">Custom directory for extracted files</string>
-    <string name="setting_extractor_path_placeholder">Defaults to Download/UniversalInstaller/Extracted</string>
-    <string name="setting_extractor_template_title">Filename template</string>
-    <string name="setting_extractor_template_subtitle">Placeholders: {name}, {version}, {package}</string>
-    <string name="setting_extractor_template_placeholder">{name}-{version}</string>
     <string name="setting_section_shizuku_options">Shizuku Options</string>
     <string name="setting_shizuku_options_install_group">Install</string>
     <string name="setting_shizuku_options_uninstall_group">Uninstall</string>
@@ -389,15 +350,9 @@
     <string name="setting_shizuku_installer_preset_samsung" translatable="false">Samsung Galaxy Store</string>
     <string name="setting_shizuku_installer_preset_huawei" translatable="false">Huawei AppGallery</string>
     <string name="setting_shizuku_installer_preset_xiaomi" translatable="false">Xiaomi GetApps</string>
-    <string name="setting_section_security">Security</string>
-    <string name="setting_vt_key_title">VirusTotal API Key</string>
-    <string name="setting_vt_key_subtitle">Enable malware scanning before install</string>
-    <string name="setting_vt_key_placeholder">Enter API key…</string>
-    <string name="setting_section_appearance">Appearance</string>
     <string name="setting_language_title">Language</string>
     <string name="setting_language_subtitle">Change app language</string>
     <string name="language_screen_title">Language</string>
-    <string name="language_system_default">System Default</string>
     <string name="back_cd">Back</string>
     <string name="done_cd">Done</string>
     <string name="setting_section_about">About</string>
@@ -416,7 +371,6 @@
     <string name="setting_privacy_subtitle">How we handle your data</string>
     <string name="setting_terms_title">Terms of service</string>
     <string name="setting_terms_subtitle">Usage terms and conditions</string>
-    <string name="setting_about_subtitle">App info, links and device details</string>
     <string name="about_section_app">App</string>
     <string name="about_section_community">Community</string>
     <string name="about_section_legal">Legal</string>
@@ -436,8 +390,6 @@
     <string name="about_btn_ok" translatable="false">OK</string>
     <string name="about_btn_copy">Copy</string>
     <string name="about_copied">Device info copied</string>
-    <string name="setting_diagnostics_title">Diagnostics</string>
-    <string name="setting_diagnostics_subtitle">View logs and crash reports</string>
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_tab_session">Session Logs</string>
     <string name="diagnostics_tab_crashes">Crash Reports</string>
@@ -456,13 +408,6 @@
     <string name="installer_mode_root" translatable="false">Root</string>
     <string name="installer_mode_package_installer">Package Installer</string>
     <string name="installer_mode_using">Using %s</string>
-    <string name="setting_root_backend">Root Backend</string>
-    <string name="setting_root_unavailable">Unavailable in this build</string>
-    <string name="setting_root_unknown">Tap to check root access</string>
-    <string name="setting_root_not_rooted">No root manager detected</string>
-    <string name="setting_root_denied">Access denied — tap Retry after granting in Magisk/KernelSU</string>
-    <string name="setting_root_ready">Silent install via su</string>
-    <string name="setting_root_retry">Retry</string>
     <string name="setting_section_root_options">Root Options</string>
     <string name="setting_root_replace">Replace existing</string>
     <string name="setting_root_replace_sub">Replace already installed packages</string>
@@ -478,7 +423,6 @@
     <string name="setting_root_all_users_sub">Install package for all device users</string>
     <string name="setting_root_set_source">Set install source</string>
     <string name="setting_root_set_source_sub">Defaults to this app when off</string>
-    <string name="setting_root_installer_label">installed by (package name)</string>
     <string name="install_error_cancelled_title">Installation cancelled</string>
     <string name="install_error_cancelled_guidance">The installation was cancelled by the user or system. Tap Retry to try again.</string>
     <string name="install_error_blocked_title">Installation blocked</string>
@@ -511,10 +455,6 @@
     <string name="onboarding_page3_title">Allow Installation</string>
     <string name="onboarding_page3_desc">To install packages, the app needs permission to install from unknown sources. Tap the button below to grant it.</string>
     <string name="setting_section_sync">Sync &amp; Share</string>
-    <string name="setting_sync_require_pin_title">Require PIN code</string>
-    <string name="setting_sync_require_pin_subtitle">Secure file downloads with a 4–8 digit PIN</string>
-    <string name="setting_sync_pin_code_title">PIN Code</string>
-    <string name="setting_sync_port_title">Server Port</string>
     <string name="qs_tile_sync_label">Sync &amp; Share</string>
     <string name="theme_screen_title">App Theme</string>
     <string name="theme_mode_title">Theme Mode</string>
@@ -525,7 +465,6 @@
     <string name="theme_dynamic_color_subtitle">Use system wallpaper colors for app accents (requires Android 12+)</string>
     <string name="theme_amoled_mode_title">AMOLED Black</string>
     <string name="theme_amoled_mode_subtitle">Use pitch black background in dark mode</string>
-    <string name="setting_theme_description">Customize Dynamic Colors and Dark Mode</string>
     <string name="dialog_loading_text">Analyzing package…</string>
     <string name="dialog_install_btn">Install</string>
     <string name="dialog_update_btn">Update</string>
@@ -605,7 +544,6 @@
     <string name="uninstall_search_open_cd">Search</string>
     <string name="uninstall_search_close_cd">Close search</string>
     <string name="uninstall_search_clear_cd">Clear search</string>
-
     <string name="setting_section_profiles">Installer Profiles</string>
     <string name="setting_profiles_title">Profiles</string>
     <string name="setting_profiles_subtitle">Save and reuse install configurations</string>
@@ -623,7 +561,6 @@
     <string name="edit">Edit</string>
     <string name="install_profile_picker_label">Installer Profile</string>
     <string name="install_profile_none">None (Use global settings)</string>
-    <string name="install_profile_smart_pick_enabled">Smart Pick: Applied \&quot;%s\&quot; profile</string>
     <string name="profile_mapping_header">Auto-apply for this app</string>
     <string name="profile_mapping_desc">Always use this profile when installing this package.</string>
 </resources>
