@@ -26,6 +26,7 @@ This skill automates the end-to-end process of releasing a new version of the ap
   git log $LAST_TAG..HEAD --oneline
   ```
 - Generate a concise changelog and write it to `fastlane/metadata/android/en-US/changelogs/<new-versionCode>.txt`.
+- **MANDATORY:** Check the character count of the changelog. It MUST NOT exceed 500 characters (Google Play Store limit). Use `wc -c <file_path>` to verify. If it exceeds the limit, shorten it before proceeding.
 
 ### 4. User Confirmation
 - **MANDATORY:** Present the generated changelog to the user.
@@ -51,3 +52,4 @@ This skill automates the end-to-end process of releasing a new version of the ap
 - **Validation:** Always verify the build with `./gradlew assembleDebug` before pushing.
 - **Confirmation:** Always wait for user confirmation on the changelog.
 - **Format:** Ensure the tag matches the `vX.Y.Z` format.
+- **Changelog Limit:** The changelog file MUST be under 500 characters to avoid Google Play API rejection. Always verify with `wc -c`.
