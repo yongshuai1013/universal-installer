@@ -1,0 +1,9 @@
+• Ported InstallerX-Revived expressive animations for a "living" UI.
+• New Brand Orange theme (default) and standardized settings icons.
+• Implemented Installer Profiles to save and reuse custom install settings.
+• Support for targeted user installs (Work profiles/other users).
+• Added port and PIN settings directly in the Sync screen.
+• Improved Default Installer logic using modern Android APIs.
+• Fixed VirusTotal link access and installation source spoofing issues.
+• Updated translations for all 16 supported languages.
+• Various UI polish and performance optimizations.

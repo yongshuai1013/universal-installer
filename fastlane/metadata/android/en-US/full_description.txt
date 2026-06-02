@@ -1,4 +1,9 @@
-Universal Installer is a modern Android package manager that handles what the default installer can't — split APKs, bundled archives with OBB data, silent installs, and downloads from URLs. All wrapped in a clean Material 3 UI.
+Universal Installer is a modern Android package manager that handles what the default installer can't — split APKs, bundled archives with OBB data, silent installs, and downloads from URLs. All wrapped in a premium, expressive Material 3 UI with bouncy spring animations.
+
+Expressive & Customizable
+- Fluid animations — Living dialogs that resize smoothly using bouncy spring physics (inspired by InstallerX-Revived).
+- Brand identity — High-contrast Orange theme as default for a professional look.
+- Installer Profiles — Save your favorite combinations of install flags, spoofed installers, and target users into reusable profiles.
 
 Supported Formats
 

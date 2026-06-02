@@ -50,6 +50,11 @@
 
 ## Features
 
+### Visuals & UX
+
+* **Expressive UI** — Beautiful, bouncy spring animations (inspired by InstallerX-Revived) that make the dialog card "living" and responsive.
+* **Brand Identity** — Sleek default Orange theme for a premium, high-contrast look (Dynamic Color still available as an option).
+
 ### Install
 
 * **Multi-format** — `.apk`, `.apk+`, `.apks`, `.xapk`, `.apkm` with split APK handling (via [Ackpine](https://ackpine.solrudev.ru/))
@@ -80,6 +85,7 @@
 
 When Root access or Shizuku is enabled, unlocks:
 
+* **Installer Profiles** — Save and reuse custom install configurations (installer package spoofing, privileged flags, targeted users) per app or globally.
 * **Silent install / uninstall** — No system confirmation prompt
 * **Replace existing**, **Allow downgrade**, **Grant all requested permissions**, **Allow test packages**, **Bypass low target SDK block**, **Install for all users**
 * **Set install source** — Spoof the installer package name (Google Play, Aurora, F-Droid, Amazon, Samsung, Huawei, Xiaomi presets, or custom) so apps with "installed from Play Store" checks accept your sideload
@@ -108,8 +114,8 @@ When Root access or Shizuku is enabled, unlocks:
 
 ### Other
 
-* **Material 3** — Dynamic color + Light / Dark / System theme
-* **Multi-language** — Arabic, German, English, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Portuguese (BR), Russian, Turkish, Vietnamese, Chinese
+* **Material 3** — Orange brand theme (default) + Dynamic color + Light / Dark / System theme
+* **Multi-language** — Arabic, German, Greek, English, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Portuguese (BR), Russian, Turkish, Ukrainian, Vietnamese, Chinese
 * **Progress notifications** — Download, install, and OBB copy all surface their progress in the notification shade
 
 ---
