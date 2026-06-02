@@ -10,6 +10,7 @@ data class SessionData(
     val id: UUID,
     val name: String,
     val appName: String = "",
+    val packageName: String = "",
     val iconPath: String? = null,
     val error: ResolvableString = ResolvableString.empty(),
     val isCancellable: Boolean = true

@@ -412,6 +412,7 @@ class InstallViewModel(
                 id = UUID.randomUUID(),
                 name = fn,
                 appName = apkInfo?.appName ?: "",
+                packageName = apkInfo?.packageName ?: "",
                 iconPath = iconPath,
             )
             val hasZipObbs = obbEntries.isNotEmpty() && originalUri != null
@@ -869,6 +870,7 @@ class InstallViewModel(
                     id = UUID.randomUUID(),
                     name = entry.fileName,
                     appName = entry.apkInfo.appName,
+                    packageName = entry.apkInfo.packageName,
                     iconPath = iconPath,
                 )
                 controller.install(

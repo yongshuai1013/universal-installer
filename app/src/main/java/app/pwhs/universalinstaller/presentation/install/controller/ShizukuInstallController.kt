@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import app.pwhs.universalinstaller.data.local.InstallHistoryDao
 import app.pwhs.universalinstaller.domain.repository.SessionDataRepository
+import app.pwhs.universalinstaller.presentation.install.dialog.InstallerOverrides
 import app.pwhs.universalinstaller.presentation.setting.DEFAULT_INSTALLER_PACKAGE_NAME
 import app.pwhs.universalinstaller.presentation.setting.PreferencesKeys
 import app.pwhs.universalinstaller.presentation.setting.dataStore
@@ -27,6 +28,7 @@ class ShizukuInstallController(
     override suspend fun createSession(
         uris: List<Uri>,
         name: String,
+        packageName: String,
     ): ProgressSession<InstallFailure> {
         val prefs = application.dataStore.data.first()
         return packageInstaller.createSession(uris) {
@@ -43,7 +45,13 @@ class ShizukuInstallController(
                 // Applied only when user opted in; otherwise ackpine defaults to this app.
                 // Under-the-hood API requires Android 9+ — silently ignored on older devices.
                 if (prefs[PreferencesKeys.SHIZUKU_SET_INSTALL_SOURCE] == true) {
-                    installerPackageName = prefs[PreferencesKeys.SHIZUKU_INSTALLER_PACKAGE_NAME]
+                    val overrides = prefs[PreferencesKeys.INSTALLER_OVERRIDES]
+                    val override = if (packageName.isNotBlank()) {
+                        InstallerOverrides.get(overrides, packageName)
+                    } else null
+                    
+                    installerPackageName = override
+                        ?: prefs[PreferencesKeys.SHIZUKU_INSTALLER_PACKAGE_NAME]
                         ?.trim()
                         ?.ifBlank { DEFAULT_INSTALLER_PACKAGE_NAME }
                         ?: DEFAULT_INSTALLER_PACKAGE_NAME

@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import app.pwhs.universalinstaller.data.local.InstallHistoryDao
 import app.pwhs.universalinstaller.domain.repository.SessionDataRepository
+import app.pwhs.universalinstaller.presentation.install.dialog.InstallerOverrides
 import app.pwhs.universalinstaller.presentation.setting.DEFAULT_INSTALLER_PACKAGE_NAME
 import app.pwhs.universalinstaller.presentation.setting.PreferencesKeys
 import app.pwhs.universalinstaller.presentation.setting.dataStore
@@ -34,14 +35,9 @@ class RootInstallController(
     override suspend fun createSession(
         uris: List<Uri>,
         name: String,
+        packageName: String,
     ): ProgressSession<InstallFailure> {
         val prefs = application.dataStore.data.first()
-        val targetUserId = prefs[PreferencesKeys.INSTALL_USER_ID]
-        
-        // Note: For now, if a targeted user is selected, we use the Ackpine session 
-        // normally but acknowledge that the targetUserId logic in Ackpine's 
-        // Shizuku/Root plugin might need further investigation.
-        // The UI selection is already persisted and ready.
         
         return packageInstaller.createSession(uris) {
             this.name = name
@@ -54,7 +50,13 @@ class RootInstallController(
                 grantAllRequestedPermissions = prefs[PreferencesKeys.ROOT_GRANT_ALL_PERMISSIONS] ?: false
                 allUsers = prefs[PreferencesKeys.ROOT_ALL_USERS] ?: false
                 if (prefs[PreferencesKeys.ROOT_SET_INSTALL_SOURCE] == true) {
-                    installerPackageName = prefs[PreferencesKeys.ROOT_INSTALLER_PACKAGE_NAME]
+                    val overrides = prefs[PreferencesKeys.INSTALLER_OVERRIDES]
+                    val override = if (packageName.isNotBlank()) {
+                        InstallerOverrides.get(overrides, packageName)
+                    } else null
+                    
+                    installerPackageName = override
+                        ?: prefs[PreferencesKeys.ROOT_INSTALLER_PACKAGE_NAME]
                         ?.trim()
                         ?.ifBlank { DEFAULT_INSTALLER_PACKAGE_NAME }
                         ?: DEFAULT_INSTALLER_PACKAGE_NAME

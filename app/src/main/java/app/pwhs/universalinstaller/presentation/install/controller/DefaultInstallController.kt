@@ -20,6 +20,7 @@ class DefaultInstallController(
     override suspend fun createSession(
         uris: List<Uri>,
         name: String,
+        packageName: String,
     ): ProgressSession<InstallFailure> {
         return packageInstaller.createSession(uris) {
             this.name = name

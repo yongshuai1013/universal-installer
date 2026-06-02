@@ -552,6 +552,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.securityTab(
             VtStatus.SUSPICIOUS -> MaterialTheme.colorScheme.error
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
+        val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
         MenuCard(
             title = stringResource(R.string.dialog_menu_virustotal),
             description = vtDesc,
@@ -565,7 +566,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.securityTab(
                     tint = vtColor,
                 )
             },
-            onClick = onCheckVirusTotal,
+            onClick = {
+                if (vtResult?.status in listOf(VtStatus.CLEAN, VtStatus.MALICIOUS, VtStatus.SUSPICIOUS)) {
+                    uriHandler.openUri("https://www.virustotal.com/gui/file/${apkInfo.sha256}/detection")
+                } else {
+                    onCheckVirusTotal()
+                }
+            },
         )
     }
 

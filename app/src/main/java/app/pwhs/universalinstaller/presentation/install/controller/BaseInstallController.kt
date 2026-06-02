@@ -42,6 +42,7 @@ abstract class BaseInstallController(
     protected abstract suspend fun createSession(
         uris: List<Uri>,
         name: String,
+        packageName: String,
     ): ProgressSession<InstallFailure>
 
     fun install(
@@ -55,7 +56,7 @@ abstract class BaseInstallController(
         onSessionCreated: ((UUID) -> Unit)? = null,
     ) {
         scope.launch {
-            val session = createSession(uris, sessionData.name)
+            val session = createSession(uris, sessionData.name, sessionData.packageName)
             activeSessions[session.id] = session
             sessionUris[session.id] = uris
             if (originalUri != null) originalFileUris[session.id] = originalUri

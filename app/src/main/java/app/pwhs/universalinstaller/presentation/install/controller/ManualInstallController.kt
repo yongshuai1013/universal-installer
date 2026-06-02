@@ -27,6 +27,7 @@ class ManualInstallController(
     override suspend fun createSession(
         uris: List<Uri>,
         name: String,
+        packageName: String,
     ): ProgressSession<InstallFailure> {
         // This won't be called if we override install()
         throw UnsupportedOperationException("Use install() with userId")
