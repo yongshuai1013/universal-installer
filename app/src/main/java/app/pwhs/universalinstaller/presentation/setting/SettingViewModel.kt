@@ -133,6 +133,20 @@ data class SyncOptions(
     val serverPort: String = "8080"
 )
 
+/** Mutually exclusive install backend selection. Stored as two booleans in DataStore
+ *  (USE_SHIZUKU, USE_ROOT) for backward compatibility — this enum is the UI-side view. */
+enum class InstallMode {
+    DEFAULT, SHIZUKU, ROOT;
+
+    companion object {
+        fun from(useShizuku: Boolean, useRoot: Boolean): InstallMode = when {
+            useRoot -> ROOT
+            useShizuku -> SHIZUKU
+            else -> DEFAULT
+        }
+    }
+}
+
 enum class ThemeMode(val label: String) {
     System("System"),
     Light("Light"),
@@ -291,6 +305,36 @@ class SettingViewModel(
     fun setAmoledMode(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.edit { prefs -> prefs[PreferencesKeys.AMOLED_MODE] = enabled }
+        }
+    }
+
+    /**
+     * Three-way switch between the installer backends. Atomic — clears the other flag so
+     * we can't end up in an undefined "both true" state. Picking SHIZUKU still requires
+     * a permission grant and so funnels through the existing setUseShizuku flow; the user
+     * sees the segmented button bounce back to DEFAULT if they decline.
+     */
+    fun setInstallMode(mode: InstallMode) {
+        when (mode) {
+            InstallMode.DEFAULT -> viewModelScope.launch {
+                dataStore.edit { p ->
+                    p[PreferencesKeys.USE_SHIZUKU] = false
+                    p[PreferencesKeys.USE_ROOT] = false
+                }
+            }
+            InstallMode.SHIZUKU -> {
+                viewModelScope.launch {
+                    dataStore.edit { p -> p[PreferencesKeys.USE_ROOT] = false }
+                }
+                // Reuses the existing permission-prompt / state-check ladder.
+                setUseShizuku(true)
+            }
+            InstallMode.ROOT -> viewModelScope.launch {
+                dataStore.edit { p ->
+                    p[PreferencesKeys.USE_SHIZUKU] = false
+                    p[PreferencesKeys.USE_ROOT] = true
+                }
+            }
         }
     }
 

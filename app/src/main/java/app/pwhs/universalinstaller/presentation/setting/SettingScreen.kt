@@ -44,6 +44,9 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -84,7 +87,7 @@ fun SettingScreen(
     SettingUi(
         modifier = modifier,
         uiState = uiState,
-        onShizukuChanged = viewModel::setUseShizuku,
+        onInstallModeChanged = viewModel::setInstallMode,
         onVirusTotalKeyChanged = viewModel::setVirusTotalApiKey,
         onShizukuOptionChanged = viewModel::setShizukuOption,
         onShizukuInstallerChanged = viewModel::setShizukuInstallerPackageName,
@@ -93,7 +96,6 @@ fun SettingScreen(
         onLanguageClick = {
             context.startActivity(android.content.Intent(context, app.pwhs.universalinstaller.presentation.setting.language.LanguageActivity::class.java))
         },
-        onRootChanged = viewModel::setUseRoot,
         onRootRetry = viewModel::retryRoot,
         onRootOptionChanged = viewModel::setRootOption,
         onRootInstallerChanged = viewModel::setRootInstallerPackageName,
@@ -116,14 +118,13 @@ fun SettingScreen(
 private fun SettingUi(
     modifier: Modifier = Modifier,
     uiState: SettingUiState = SettingUiState(),
-    onShizukuChanged: (Boolean) -> Unit = {},
+    onInstallModeChanged: (InstallMode) -> Unit = {},
     onVirusTotalKeyChanged: (String) -> Unit = {},
     onShizukuOptionChanged: (Preferences.Key<Boolean>, Boolean) -> Unit = { _, _ -> },
     onShizukuInstallerChanged: (String) -> Unit = {},
     onDeleteApkChanged: (Boolean) -> Unit = {},
     onAutoOpenAfterInstallChanged: (Boolean) -> Unit = {},
     onLanguageClick: () -> Unit = {},
-    onRootChanged: (Boolean) -> Unit = {},
     onRootRetry: () -> Unit = {},
     onRootOptionChanged: (Preferences.Key<Boolean>, Boolean) -> Unit = { _, _ -> },
     onRootInstallerChanged: (String) -> Unit = {},
@@ -175,43 +176,20 @@ private fun SettingUi(
             // ── Installation Section ─────────────────────
             item {
                 SettingsSection(title = stringResource(R.string.setting_section_installation), icon = Icons.Rounded.SettingsApplications) {
-                    val shizukuStatusText = when (uiState.shizukuState) {
-                        ShizukuState.NOT_INSTALLED -> stringResource(R.string.setting_shizuku_not_installed)
-                        ShizukuState.NOT_RUNNING -> stringResource(R.string.setting_shizuku_not_running)
-                        ShizukuState.UNSUPPORTED -> stringResource(R.string.setting_shizuku_unsupported)
-                        ShizukuState.NO_PERMISSION -> stringResource(R.string.setting_shizuku_no_permission)
-                        ShizukuState.READY -> stringResource(R.string.setting_shizuku_ready)
-                    }
-
-                    SwitchPreference(
-                        title = stringResource(R.string.setting_shizuku_backend),
-                        subtitle = shizukuStatusText,
-                        checked = uiState.useShizuku,
-                        onCheckedChange = onShizukuChanged,
+                    InstallModeSelector(
+                        currentMode = InstallMode.from(uiState.useShizuku, uiState.useRoot),
+                        shizukuState = uiState.shizukuState,
+                        rootSupported = uiState.rootSupported,
+                        rootState = uiState.rootState,
+                        onModeChange = onInstallModeChanged,
                     )
-                    
-                    if (uiState.rootSupported) {
-                        val rootStatusText = when (uiState.rootState) {
-                            RootState.UNAVAILABLE -> "Unavailable"
-                            RootState.UNKNOWN -> "Checking..."
-                            RootState.DENIED -> "Denied"
-                            RootState.READY -> "Ready"
-                            else -> "Not Rooted"
-                        }
-                        SwitchPreference(
-                            title = "Root Mode",
-                            subtitle = rootStatusText,
-                            checked = uiState.useRoot,
-                            onCheckedChange = onRootChanged,
+                    if (uiState.rootSupported && uiState.useRoot && uiState.rootState == RootState.DENIED) {
+                        ListItem(
+                            headlineContent = { Text("Retry Root Probe") },
+                            leadingContent = { Icon(Icons.Rounded.RocketLaunch, null, tint = MaterialTheme.colorScheme.primary) },
+                            modifier = Modifier.clickable { onRootRetry() },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
-                        if (uiState.rootState == RootState.DENIED) {
-                            ListItem(
-                                headlineContent = { Text("Retry Root Probe") },
-                                leadingContent = { Icon(Icons.Rounded.RocketLaunch, null, tint = MaterialTheme.colorScheme.primary) },
-                                modifier = Modifier.clickable { onRootRetry() },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                            )
-                        }
                     }
 
                     SwitchPreference(
@@ -726,4 +704,88 @@ private fun SwitchPreference(
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable(enabled = enabled) { onCheckedChange(!checked) }
     )
+}
+
+/**
+ * Three-way picker for the install backend. Replaces the two separate Shizuku/Root
+ * switches — they were mutually exclusive in practice and made the "neither" state
+ * (default system installer) implicit. A segmented row makes all three first-class.
+ *
+ * Root option disappears when the build has no libsu (store flavor).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InstallModeSelector(
+    currentMode: InstallMode,
+    shizukuState: ShizukuState,
+    rootSupported: Boolean,
+    rootState: RootState,
+    onModeChange: (InstallMode) -> Unit,
+) {
+    val options: List<InstallMode> = remember(rootSupported) {
+        if (rootSupported) listOf(InstallMode.DEFAULT, InstallMode.SHIZUKU, InstallMode.ROOT)
+        else listOf(InstallMode.DEFAULT, InstallMode.SHIZUKU)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.setting_install_mode_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        // Root button stays in the row when libsu shipped (full flavor) but goes disabled
+        // when the device has no su binary or libsu is on a different policy — tapping it
+        // would just bounce back to the previous selection, which is confusing. Dim it
+        // instead. DENIED/UNKNOWN remain tappable because the retry path can still resolve
+        // them.
+        val rootSelectable = rootState == RootState.READY ||
+            rootState == RootState.DENIED ||
+            rootState == RootState.UNKNOWN
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, mode ->
+                SegmentedButton(
+                    selected = mode == currentMode,
+                    onClick = { if (mode != currentMode) onModeChange(mode) },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    enabled = mode != InstallMode.ROOT || rootSelectable,
+                    label = {
+                        Text(
+                            text = when (mode) {
+                                InstallMode.DEFAULT -> stringResource(R.string.setting_install_mode_default)
+                                InstallMode.SHIZUKU -> stringResource(R.string.setting_install_mode_shizuku)
+                                InstallMode.ROOT -> stringResource(R.string.setting_install_mode_root)
+                            },
+                        )
+                    },
+                )
+            }
+        }
+        val statusText = when (currentMode) {
+            InstallMode.DEFAULT -> stringResource(R.string.setting_install_mode_default_sub)
+            InstallMode.SHIZUKU -> when (shizukuState) {
+                ShizukuState.NOT_INSTALLED -> stringResource(R.string.setting_shizuku_not_installed)
+                ShizukuState.NOT_RUNNING -> stringResource(R.string.setting_shizuku_not_running)
+                ShizukuState.UNSUPPORTED -> stringResource(R.string.setting_shizuku_unsupported)
+                ShizukuState.NO_PERMISSION -> stringResource(R.string.setting_shizuku_no_permission)
+                ShizukuState.READY -> stringResource(R.string.setting_shizuku_ready)
+            }
+            InstallMode.ROOT -> when (rootState) {
+                RootState.UNAVAILABLE -> "Unavailable"
+                RootState.UNKNOWN -> "Checking..."
+                RootState.DENIED -> "Denied"
+                RootState.READY -> "Ready"
+                else -> "Not Rooted"
+            }
+        }
+        Text(
+            text = statusText,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
 }

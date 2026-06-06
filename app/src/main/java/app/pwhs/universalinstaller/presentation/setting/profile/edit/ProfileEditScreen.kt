@@ -36,6 +36,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -108,6 +111,8 @@ fun ProfileEditScreen(
         onInstallerPkgChange = { installerPkg = it },
         backend = backend,
         onBackendChange = { backend = it },
+        rootSupported = uiState.rootSupported,
+        rootState = uiState.rootState,
         replaceExisting = replaceExisting,
         onReplaceExistingChange = { replaceExisting = it },
         allowTest = allowTest,
@@ -151,6 +156,8 @@ private fun ProfileEditUi(
     onInstallerPkgChange: (String) -> Unit,
     backend: String,
     onBackendChange: (String) -> Unit,
+    rootSupported: Boolean,
+    rootState: app.pwhs.universalinstaller.presentation.install.controller.RootState,
     replaceExisting: Boolean?,
     onReplaceExistingChange: (Boolean?) -> Unit,
     allowTest: Boolean?,
@@ -249,19 +256,36 @@ private fun ProfileEditUi(
 
             item {
                 SettingsSection(
-                    title = stringResource(R.string.setting_shizuku_backend),
+                    title = stringResource(R.string.setting_install_mode_title),
                     icon = Icons.Rounded.Layers
                 ) {
-                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                        listOf("Default", "Shizuku", "Root").forEach { b ->
-                            ListItem(
-                                headlineContent = { Text(b) },
-                                leadingContent = {
-                                    RadioButton(selected = backend == b, onClick = { onBackendChange(b) })
-                                },
-                                modifier = Modifier.clickable { onBackendChange(b) },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                            )
+                    // Mirrors the main Settings install-mode picker: segmented row, Root
+                    // dimmed when no su binary on this device, hidden entirely on store
+                    // flavor (which has no libsu).
+                    val rootSelectable = rootState == app.pwhs.universalinstaller.presentation.install.controller.RootState.READY ||
+                        rootState == app.pwhs.universalinstaller.presentation.install.controller.RootState.DENIED ||
+                        rootState == app.pwhs.universalinstaller.presentation.install.controller.RootState.UNKNOWN
+                    val options = if (rootSupported) listOf("Default", "Shizuku", "Root")
+                        else listOf("Default", "Shizuku")
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            options.forEachIndexed { index, b ->
+                                SegmentedButton(
+                                    selected = backend == b,
+                                    onClick = { if (backend != b) onBackendChange(b) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                                    enabled = b != "Root" || rootSelectable,
+                                    label = {
+                                        Text(
+                                            text = when (b) {
+                                                "Default" -> stringResource(R.string.setting_install_mode_default)
+                                                "Shizuku" -> stringResource(R.string.setting_install_mode_shizuku)
+                                                else -> stringResource(R.string.setting_install_mode_root)
+                                            },
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
                 }

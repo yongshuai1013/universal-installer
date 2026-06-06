@@ -28,11 +28,18 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
     override val rootSupportCompiledIn: Boolean = true
 
     /**
-     * Non-blocking probe — never triggers a SuperUser prompt. Maps libsu's nullable
-     * "grant" result to our finer-grained enum. Returns UNKNOWN when nothing has asked
-     * for a shell yet so the UI can show "Tap to check" instead of a misleading error.
+     * Non-blocking probe — never triggers a SuperUser prompt. First does a cheap
+     * filesystem check for an `su` binary on any of the well-known paths; if none
+     * exist, we can definitively say NOT_ROOTED without poking libsu (which would
+     * otherwise return UNKNOWN forever on non-rooted devices since
+     * `Shell.isAppGrantedRoot()` only flips to a real answer after a shell attempt).
+     * Then maps libsu's nullable "grant" result to our finer-grained enum:
+     *   - null → UNKNOWN (su present but never asked)
+     *   - true → READY
+     *   - false → DENIED (manager said no)
      */
     override suspend fun probeRootState(): RootState = withContext(Dispatchers.IO) {
+        if (!suBinaryExists()) return@withContext RootState.NOT_ROOTED
         try {
             when (Shell.isAppGrantedRoot()) {
                 null -> RootState.UNKNOWN
@@ -42,6 +49,34 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
         } catch (t: Throwable) {
             Timber.w(t, "probeRootState failed")
             RootState.UNKNOWN
+        }
+    }
+
+    /**
+     * Checks for the `su` binary on every path Magisk/KernelSU/APatch/SuperSU has ever
+     * used, plus walks `$PATH` like `which su` would — Magisk mounts the binary into a
+     * randomized directory under `/data/adb/` on newer versions, and the only thing
+     * guaranteed visible from app context is its presence on `$PATH`.
+     */
+    private fun suBinaryExists(): Boolean {
+        val knownPaths = listOf(
+            "/system/bin/su",
+            "/system/xbin/su",
+            "/sbin/su",
+            "/system/sbin/su",
+            "/su/bin/su",
+            "/data/adb/magisk/su",
+            "/data/adb/ksud",
+            "/data/adb/ap/bin/apd",
+        )
+        if (knownPaths.any { runCatching { java.io.File(it).exists() }.getOrDefault(false) }) {
+            return true
+        }
+        val pathEnv = System.getenv("PATH") ?: return false
+        return pathEnv.split(':').any { dir ->
+            dir.isNotBlank() && runCatching {
+                java.io.File(dir, "su").exists()
+            }.getOrDefault(false)
         }
     }
 

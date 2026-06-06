@@ -310,6 +310,11 @@
     <string name="setting_title">Settings</string>
     <string name="setting_section_installation">Installation</string>
     <string name="setting_shizuku_backend">Shizuku Backend</string>
+    <string name="setting_install_mode_title">Install mode</string>
+    <string name="setting_install_mode_default">Default</string>
+    <string name="setting_install_mode_shizuku">Shizuku</string>
+    <string name="setting_install_mode_root">Root</string>
+    <string name="setting_install_mode_default_sub">System installer (shows confirmation dialog)</string>
     <string name="setting_shizuku_not_installed">Shizuku not installed</string>
     <string name="setting_shizuku_not_running">Shizuku installed but not running</string>
     <string name="setting_shizuku_unsupported">Shizuku version too old (pre-v11)</string>
