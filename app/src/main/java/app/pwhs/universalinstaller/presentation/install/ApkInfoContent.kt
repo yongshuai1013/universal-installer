@@ -417,7 +417,7 @@ private fun VirusTotalCard(vt: VtResult?, fileSizeBytes: Long, sha256: String = 
         VtStatus.SUSPICIOUS -> extendedColors.warning
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = if (status == VtStatus.MALICIOUS) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerLow), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = if (status == VtStatus.MALICIOUS) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Security, null, tint = vtColor, modifier = Modifier.size(20.dp))
@@ -493,7 +493,7 @@ private fun SplitsCard(splits: List<SplitEntry>, onToggle: (Int) -> Unit) {
 @Composable
 private fun SectionCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, summary: String? = null, badge: String? = null, defaultExpanded: Boolean = true, content: @Composable () -> Unit) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
-    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(modifier = Modifier.animateContentSize()) {
             Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -534,7 +534,7 @@ internal fun sdkToAndroid(sdk: Int): String = when {
 
 @Composable
 private fun ObbAttachCard(attached: List<AttachedObb>, onAttach: () -> Unit, onRemove: (AttachedObb) -> Unit) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(stringResource(R.string.apk_info_obb_attach_title), style = MaterialTheme.typography.titleSmall)
             attached.forEach { obb ->

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -412,7 +413,7 @@ private fun InstallUi(
             shape = MaterialTheme.shapes.extraLarge,
         ) {
             ApkInfoContent(
-                apkInfo = uiState.pendingApkInfo!!,
+                apkInfo = uiState.pendingApkInfo,
                 onInstall = onConfirmInstall,
                 onCancel = onDismissPreview,
                 onCheckVirusTotal = onCheckVirusTotal,
