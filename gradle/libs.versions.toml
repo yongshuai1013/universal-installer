@@ -25,6 +25,10 @@ libsu = "6.0.0"
 timber = "5.0.1"
 coreSplashscreen = "1.2.0"
 kotlinx-serialization = "1.8.0"
+appcompat = "1.7.1"
+material = "1.10.0"
+tvFoundation = "1.0.0-alpha07"
+tvMaterial = "1.0.0-alpha07"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -107,6 +111,10 @@ timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", version.ref = "hiddenapibypass" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "coreVersion" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-tv-foundation = { group = "androidx.tv", name = "tv-foundation", version.ref = "tvFoundation" }
+androidx-tv-material = { group = "androidx.tv", name = "tv-material", version.ref = "tvMaterial" }
 
 
 [plugins]
@@ -115,6 +123,7 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 
 [bundles]
 # Shared across both flavors — no libsu here so the `store` build is libsu-free.
