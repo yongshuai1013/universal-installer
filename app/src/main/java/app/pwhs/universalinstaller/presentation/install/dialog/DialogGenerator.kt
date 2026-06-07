@@ -48,6 +48,7 @@ fun generateDialogParams(
     onBackground: () -> Unit,
     onOpenInstalledApp: (String) -> Unit,
     onCloseAfterResult: () -> Unit,
+    onRetry: () -> Unit,
     onToggleAllUsers: (Boolean) -> Unit,
     onSelectUserId: (Int?) -> Unit,
 ): DialogParams {
@@ -214,6 +215,7 @@ fun generateDialogParams(
                             target = dialogTarget,
                             errorMessage = stage.errorMessage,
                             onClose = onCloseAfterResult,
+                            onRetry = onRetry,
                         )
                     }
                 )

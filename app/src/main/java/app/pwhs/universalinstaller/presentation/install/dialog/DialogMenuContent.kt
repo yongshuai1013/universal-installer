@@ -69,10 +69,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -261,16 +259,10 @@ fun DialogMenuContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // ── Tabs ──
-        TabRow(
+        PrimaryTabRow(
             selectedTabIndex = pagerState.currentPage,
             containerColor = Color.Transparent,
             divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)) },
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
         ) {
             tabs.forEachIndexed { index, title ->
                 Tab(

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import app.pwhs.universalinstaller.R
 import app.pwhs.universalinstaller.presentation.install.DialogTarget
 import java.io.File
+import kotlinx.coroutines.launch
 
 @Composable
 private fun TargetIcon(iconPath: String?, sizeDp: Int = 64) {
@@ -261,14 +262,25 @@ fun DialogSuccessContent(
 }
 
 /**
- * Failed stage — error icon + scrollable message + Close button.
+ * Failed stage — error icon + scrollable message + actionable buttons.
+ *
+ * [onRetry] is invoked when the user wants to attempt the install again with the
+ * same parameters. Null disables the Retry button — useful for terminal failures
+ * (signature conflict, etc.) where retrying without user intervention can't
+ * succeed.
  */
 @Composable
 fun DialogFailedContent(
     target: DialogTarget?,
     errorMessage: String,
     onClose: () -> Unit,
+    onRetry: (() -> Unit)? = null,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val copiedToast = stringResource(R.string.dialog_failed_copied)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -315,15 +327,54 @@ fun DialogFailedContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            // "Copy error" — secondary affordance. Always available when there's a message,
+            // so users have something useful to share with support / file a bug.
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    scope.launch {
+                        val clip = android.content.ClipData.newPlainText("install-error", errorMessage)
+                        clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(clip))
+                        android.widget.Toast.makeText(context, copiedToast, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+            ) {
+                Text(stringResource(R.string.dialog_failed_copy_error))
+            }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Button(
-            onClick = onClose,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.dialog_failed_close))
+        if (onRetry != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = onClose,
+                    modifier = Modifier.weight(1f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                    ),
+                ) {
+                    Text(stringResource(R.string.dialog_failed_close))
+                }
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.dialog_failed_retry))
+                }
+            }
+        } else {
+            Button(
+                onClick = onClose,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.dialog_failed_close))
+            }
         }
     }
 }

@@ -376,6 +376,9 @@ class DialogInstallActivity : ComponentActivity() {
                                 viewModel.clearDialogTarget()
                                 finish()
                             },
+                            onRetry = {
+                                proceedInstall()
+                            },
                             onToggleAllUsers = viewModel::setAllUsers,
                             onSelectUserId = viewModel::setUserId,
                         )
