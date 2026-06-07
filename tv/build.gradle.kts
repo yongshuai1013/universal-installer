@@ -49,7 +49,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.tv.foundation)
+    implementation(libs.androidx.foundation)
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
