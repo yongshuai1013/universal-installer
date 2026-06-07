@@ -35,10 +35,11 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.InstallMobile
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Work
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -104,8 +105,12 @@ internal fun ApkInfoContent(
     onToggleSplit: (Int) -> Unit = {},
     profiles: List<InstallerProfile> = emptyList(),
     appProfileMapping: Map<String, String> = emptyMap(),
+    allUsers: Boolean = false,
+    selectedUserId: Int? = null,
     onProfileSelected: (InstallerProfile?) -> Unit = {},
     onMappingChanged: (String, String?) -> Unit = { _, _ -> },
+    onToggleAllUsers: (Boolean) -> Unit = {},
+    onSelectUserId: (Int?) -> Unit = {},
     startCompact: Boolean = true,
 ) {
     val context = LocalContext.current
@@ -244,6 +249,15 @@ internal fun ApkInfoContent(
             Spacer(Modifier.height(16.dp))
             
             // Move Installer Profiles higher up
+            InstallTargetCard(
+                allUsers = allUsers,
+                selectedUserId = selectedUserId,
+                onToggleAllUsers = onToggleAllUsers,
+                onSelectUserId = onSelectUserId,
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             ProfilePickerCard(
                 profiles = profiles,
                 currentMappingProfileId = currentMappingProfileId,
@@ -403,7 +417,7 @@ private fun VirusTotalCard(vt: VtResult?, fileSizeBytes: Long, sha256: String = 
         VtStatus.SUSPICIOUS -> extendedColors.warning
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = CardDefaults.elevatedCardColors(containerColor = if (status == VtStatus.MALICIOUS) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = if (status == VtStatus.MALICIOUS) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerLow), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Security, null, tint = vtColor, modifier = Modifier.size(20.dp))
@@ -479,7 +493,7 @@ private fun SplitsCard(splits: List<SplitEntry>, onToggle: (Int) -> Unit) {
 @Composable
 private fun SectionCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, summary: String? = null, badge: String? = null, defaultExpanded: Boolean = true, content: @Composable () -> Unit) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
-    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)) {
         Column(modifier = Modifier.animateContentSize()) {
             Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -520,7 +534,7 @@ internal fun sdkToAndroid(sdk: Int): String = when {
 
 @Composable
 private fun ObbAttachCard(attached: List<AttachedObb>, onAttach: () -> Unit, onRemove: (AttachedObb) -> Unit) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(stringResource(R.string.apk_info_obb_attach_title), style = MaterialTheme.typography.titleSmall)
             attached.forEach { obb ->
@@ -533,3 +547,34 @@ private fun ObbAttachCard(attached: List<AttachedObb>, onAttach: () -> Unit, onR
         }
     }
 }
+
+@Composable
+private fun InstallTargetCard(
+    allUsers: Boolean,
+    selectedUserId: Int?,
+    onToggleAllUsers: (Boolean) -> Unit,
+    onSelectUserId: (Int?) -> Unit,
+) {
+    val profiles = rememberDeviceUserProfiles()
+    val allUsersDesc = if (allUsers) {
+        stringResource(R.string.dialog_menu_all_users_on)
+    } else {
+        stringResource(R.string.dialog_menu_all_users_off)
+    }
+
+    SectionCard(
+        icon = Icons.Rounded.Person,
+        title = stringResource(R.string.dialog_menu_install_target),
+        summary = allUsersDesc,
+        defaultExpanded = profiles.size > 1
+    ) {
+        InstallTargetPicker(
+            profiles = profiles,
+            allUsers = allUsers,
+            selectedUserId = selectedUserId,
+            onSelectAllUsers = onToggleAllUsers,
+            onSelectUserId = onSelectUserId,
+        )
+    }
+}
+

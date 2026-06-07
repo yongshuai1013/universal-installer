@@ -48,6 +48,8 @@ fun generateDialogParams(
     onBackground: () -> Unit,
     onOpenInstalledApp: (String) -> Unit,
     onCloseAfterResult: () -> Unit,
+    onToggleAllUsers: (Boolean) -> Unit,
+    onSelectUserId: (Int?) -> Unit,
 ): DialogParams {
     return when (val stage = uiState.dialogStage) {
         DialogStage.Loading -> {
@@ -143,12 +145,16 @@ fun generateDialogParams(
                         DialogMenuContent(
                             apkInfo = info,
                             attachedObbFiles = uiState.attachedObbFiles,
+                            allUsers = uiState.allUsers,
+                            selectedUserId = uiState.selectedUserId,
                             onBack = onMenuBack,
                             onInstall = onInstall,
                             onCheckVirusTotal = onCheckVirusTotal,
                             onRemoveObb = onRemoveObb,
                             onToggleSplit = onToggleSplit,
                             onAttachObb = onAttachObb,
+                            onToggleAllUsers = onToggleAllUsers,
+                            onSelectUserId = onSelectUserId,
                         )
                     }
                 )

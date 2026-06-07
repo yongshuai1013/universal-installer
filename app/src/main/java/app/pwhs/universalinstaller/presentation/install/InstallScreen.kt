@@ -178,6 +178,8 @@ fun InstallScreen(
             if (profile != null) viewModel.applyProfile(profile)
         },
         onMappingChanged = viewModel::setAppProfileMapping,
+        onToggleAllUsers = viewModel::setAllUsers,
+        onSelectUserId = viewModel::setUserId,
     )
 }
 
@@ -219,6 +221,8 @@ private fun InstallUi(
     onSetMergeSplits: (Boolean) -> Unit = { },
     onProfileSelected: (app.pwhs.universalinstaller.domain.model.InstallerProfile?) -> Unit = {},
     onMappingChanged: (String, String?) -> Unit = { _, _ -> },
+    onToggleAllUsers: (Boolean) -> Unit = {},
+    onSelectUserId: (Int?) -> Unit = {},
 ) {
     val context = LocalContext.current
     val resource = LocalResources.current
@@ -418,8 +422,12 @@ private fun InstallUi(
                 onToggleSplit = onToggleSplit,
                 profiles = uiState.installerProfiles,
                 appProfileMapping = uiState.appProfileMapping,
+                allUsers = uiState.allUsers,
+                selectedUserId = uiState.selectedUserId,
                 onProfileSelected = onProfileSelected,
                 onMappingChanged = onMappingChanged,
+                onToggleAllUsers = onToggleAllUsers,
+                onSelectUserId = onSelectUserId,
                 startCompact = true,
             )
         }

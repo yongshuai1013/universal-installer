@@ -180,6 +180,8 @@ class InstallViewModel(
         application.dataStore.data.map { it[PreferencesKeys.APP_PROFILE_MAPPING] },
         app.pwhs.universalinstaller.presentation.sync.SyncManager.state,
         _selectedProfileId,
+        application.dataStore.data.map { it[PreferencesKeys.SHIZUKU_ALL_USERS] ?: false },
+        application.dataStore.data.map { it[PreferencesKeys.INSTALL_USER_ID] },
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         InstallUiState(
@@ -198,12 +200,40 @@ class InstallViewModel(
             appProfileMapping = ProfileManager.parseMapping(flows[12] as String?),
             syncState = flows[13] as app.pwhs.universalinstaller.presentation.sync.SyncState,
             selectedProfileId = flows[14] as String?,
+            allUsers = flows[15] as Boolean,
+            selectedUserId = flows[16] as Int?,
         )
     }
         .onStart { activeController().restoreSessionsFromSavedState(viewModelScope) }
         .stateIn(viewModelScope, SharingStarted.Lazily, InstallUiState())
 
     // ── Public actions ──────────────────────────────────
+
+    fun setAllUsers(enabled: Boolean) {
+        viewModelScope.launch {
+            application.dataStore.edit {
+                it[PreferencesKeys.SHIZUKU_ALL_USERS] = enabled
+                it[PreferencesKeys.ROOT_ALL_USERS] = enabled
+                if (enabled) {
+                    it.remove(PreferencesKeys.INSTALL_USER_ID)
+                }
+            }
+        }
+    }
+
+    fun setUserId(id: Int?) {
+        viewModelScope.launch {
+            application.dataStore.edit {
+                if (id != null) {
+                    it[PreferencesKeys.INSTALL_USER_ID] = id
+                    it[PreferencesKeys.SHIZUKU_ALL_USERS] = false
+                    it[PreferencesKeys.ROOT_ALL_USERS] = false
+                } else {
+                    it.remove(PreferencesKeys.INSTALL_USER_ID)
+                }
+            }
+        }
+    }
 
     // ── Dialog stage navigation (InstallerX-style multi-stage) ──
 

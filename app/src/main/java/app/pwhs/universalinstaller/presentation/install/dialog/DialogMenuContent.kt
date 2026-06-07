@@ -104,6 +104,8 @@ import app.pwhs.universalinstaller.presentation.install.displayLanguage
 import app.pwhs.universalinstaller.presentation.install.resolvePermissionEntries
 import app.pwhs.universalinstaller.presentation.setting.DEFAULT_INSTALLER_PACKAGE_NAME
 import app.pwhs.universalinstaller.presentation.setting.PreferencesKeys
+import app.pwhs.universalinstaller.presentation.install.InstallTargetPicker
+import app.pwhs.universalinstaller.presentation.install.rememberDeviceUserProfiles
 import app.pwhs.universalinstaller.presentation.setting.dataStore
 import kotlinx.coroutines.launch
 
@@ -120,50 +122,26 @@ import kotlinx.coroutines.launch
 fun DialogMenuContent(
     apkInfo: ApkInfo,
     attachedObbFiles: List<AttachedObb>,
+    allUsers: Boolean,
+    selectedUserId: Int?,
     onBack: () -> Unit,
     onInstall: () -> Unit,
     onCheckVirusTotal: () -> Unit,
     onRemoveObb: (AttachedObb) -> Unit,
     onToggleSplit: (Int) -> Unit,
     onAttachObb: () -> Unit = {},
+    onToggleAllUsers: (Boolean) -> Unit = {},
+    onSelectUserId: (Int?) -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
     val prefs by context.dataStore.data.collectAsState(initial = null)
-    val allUsers = prefs?.get(PreferencesKeys.SHIZUKU_ALL_USERS) ?: false
-    val selectedUserId = prefs?.get<Int>(PreferencesKeys.INSTALL_USER_ID)
     val spoofSource = prefs?.get(PreferencesKeys.SHIZUKU_SET_INSTALL_SOURCE) ?: false
     val installerPkg = prefs?.get(PreferencesKeys.SHIZUKU_INSTALLER_PACKAGE_NAME) ?: DEFAULT_INSTALLER_PACKAGE_NAME
     val overridesSerialized = prefs?.get(PreferencesKeys.INSTALLER_OVERRIDES)
     val packageOverride = remember(overridesSerialized, apkInfo.packageName) {
         InstallerOverrides.get(overridesSerialized, apkInfo.packageName)
-    }
-
-    val onToggleAllUsers: (Boolean) -> Unit = { enabled ->
-        scope.launch {
-            context.dataStore.edit {
-                it[PreferencesKeys.SHIZUKU_ALL_USERS] = enabled
-                it[PreferencesKeys.ROOT_ALL_USERS] = enabled
-                if (enabled) {
-                    it.remove(PreferencesKeys.INSTALL_USER_ID)
-                }
-            }
-        }
-    }
-
-    val onSelectUserId: (Int?) -> Unit = { id ->
-        scope.launch {
-            context.dataStore.edit {
-                if (id != null) {
-                    it[PreferencesKeys.INSTALL_USER_ID] = id
-                    it[PreferencesKeys.SHIZUKU_ALL_USERS] = false
-                    it[PreferencesKeys.ROOT_ALL_USERS] = false
-                } else {
-                    it.remove(PreferencesKeys.INSTALL_USER_ID)
-                }
-            }
-        }
     }
     
     val onToggleSpoofSource: (Boolean) -> Unit = { enabled ->
@@ -1291,166 +1269,5 @@ private fun InstallerSourcePicker(
 // Install target — user profile picker
 // ─────────────────────────────────────────────────────────────────────────
 
-private data class DeviceUserProfile(
-    val id: Int,
-    val displayName: String,
-    val isOwner: Boolean,
-    val isWorkProfile: Boolean,
-)
 
-@Composable
-private fun rememberDeviceUserProfiles(): List<DeviceUserProfile> {
-    val context = LocalContext.current
-    return remember(context) { loadDeviceUserProfiles(context) }
-}
 
-private fun loadDeviceUserProfiles(context: Context): List<DeviceUserProfile> {
-    val um = context.getSystemService(Context.USER_SERVICE) as? UserManager ?: return emptyList()
-    val ownHandle = Process.myUserHandle()
-    val ownId = getUserId(ownHandle)
-    val handles: List<UserHandle> = runCatching { um.userProfiles }.getOrElse { listOf(ownHandle) }
-    return handles.map { handle ->
-        val id = getUserId(handle)
-        val isOwner = id == ownId
-        DeviceUserProfile(
-            id = id,
-            displayName = if (isOwner) "Owner" else "Work profile ($id)",
-            isOwner = isOwner,
-            isWorkProfile = !isOwner,
-        )
-    }
-}
-
-private fun getUserId(handle: UserHandle): Int {
-    return try {
-        val method = UserHandle::class.java.getDeclaredMethod("getIdentifier")
-        method.invoke(handle) as Int
-    } catch (e: Exception) {
-        // Fallback: UserHandle.toString() is usually "UserHandle{ID}"
-        val str = handle.toString()
-        val start = str.indexOf('{')
-        val end = str.indexOf('}')
-        if (start != -1 && end > start) {
-            str.substring(start + 1, end).toIntOrNull() ?: 0
-        } else {
-            0
-        }
-    }
-}
-
-@Composable
-private fun InstallTargetPicker(
-    profiles: List<DeviceUserProfile>,
-    allUsers: Boolean,
-    selectedUserId: Int?,
-    onSelectAllUsers: (Boolean) -> Unit,
-    onSelectUserId: (Int?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        TargetOptionRow(
-            icon = Icons.Rounded.Person,
-            title = stringResource(R.string.dialog_menu_target_current),
-            subtitle = stringResource(R.string.dialog_menu_target_current_sub),
-            selected = !allUsers && selectedUserId == null,
-            onClick = {
-                onSelectAllUsers(false)
-                onSelectUserId(null)
-            },
-        )
-        TargetOptionRow(
-            icon = Icons.Rounded.Lock,
-            title = stringResource(R.string.dialog_menu_target_all),
-            subtitle = stringResource(R.string.dialog_menu_target_all_sub),
-            selected = allUsers,
-            onClick = {
-                onSelectAllUsers(true)
-                onSelectUserId(null)
-            },
-        )
-
-        if (profiles.size > 1) {
-            Spacer(modifier = Modifier.height(4.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            Text(
-                text = stringResource(R.string.dialog_menu_target_visible_profiles),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp),
-            )
-            profiles.forEach { profile ->
-                TargetOptionRow(
-                    icon = when {
-                        profile.isWorkProfile -> Icons.Rounded.Work
-                        profile.isOwner -> Icons.Rounded.Person
-                        else -> Icons.Rounded.Lock
-                    },
-                    title = profile.displayName,
-                    subtitle = "User ID: ${profile.id}",
-                    selected = !allUsers && selectedUserId == profile.id,
-                    onClick = {
-                        onSelectAllUsers(false)
-                        onSelectUserId(profile.id)
-                    },
-                )
-            }
-        }
-
-        Text(
-            text = stringResource(R.string.dialog_menu_target_hidden_users_hint),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            modifier = Modifier.padding(start = 8.dp, top = 6.dp, bottom = 4.dp, end = 8.dp),
-        )
-    }
-}
-
-@Composable
-private fun TargetOptionRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val container = if (selected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-    } else {
-        Color.Transparent
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .selectable(
-                selected = selected,
-                onClick = onClick,
-                role = Role.RadioButton,
-            )
-            .background(container)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}

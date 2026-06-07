@@ -376,6 +376,8 @@ class DialogInstallActivity : ComponentActivity() {
                                 viewModel.clearDialogTarget()
                                 finish()
                             },
+                            onToggleAllUsers = viewModel::setAllUsers,
+                            onSelectUserId = viewModel::setUserId,
                         )
 
                         PositionDialog(
