@@ -6,11 +6,13 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,15 +76,22 @@ fun ReceiveScreen(
     val installFocus = remember { FocusRequester() }
 
     val readPerm = if (Build.VERSION.SDK_INT <= 32) Manifest.permission.READ_EXTERNAL_STORAGE else null
-    var hasStorage by remember {
-        mutableStateOf(
-            readPerm == null ||
-                ContextCompat.checkSelfPermission(context, readPerm) == PackageManager.PERMISSION_GRANTED
-        )
+    fun checkStoragePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            readPerm == null || ContextCompat.checkSelfPermission(context, readPerm) == PackageManager.PERMISSION_GRANTED
+        }
     }
+
+    var hasStorage by remember { mutableStateOf(checkStoragePermission()) }
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { hasStorage = it }
+    ) { hasStorage = checkStoragePermission() }
+
+    val settingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { hasStorage = checkStoragePermission() }
 
     LaunchedEffect(pending) { if (pending != null) runCatching { installFocus.requestFocus() } }
     LaunchedEffect(hasStorage) {
@@ -144,7 +153,24 @@ fun ReceiveScreen(
         }
         if (!hasStorage) {
             item {
-                Card(onClick = { readPerm?.let { permLauncher.launch(it) } }, modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                            settingsLauncher.launch(intent)
+                        } else {
+                            readPerm?.let { permLauncher.launch(it) }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                            settingsLauncher.launch(intent)
+                        } else {
+                            readPerm?.let { permLauncher.launch(it) }
+                        }
+                    }
+                ) {
                     Column(Modifier.padding(20.dp)) {
                         Text(stringResource(R.string.tv_receive_allow_storage_title), style = MaterialTheme.typography.titleMedium)
                         Text(stringResource(R.string.tv_receive_allow_storage_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -204,10 +230,17 @@ private fun ReceivedApkCard(
                 Text(formatSize(context, apk.sizeBytes), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(onClick = onInstall, modifier = Modifier.focusRequester(installFocus)) {
+                    Button(
+                        onClick = onInstall,
+                        modifier = Modifier
+                            .focusRequester(installFocus)
+                            .clickable { onInstall() }
+                    ) {
                         Text(if (isInstalling) stringResource(R.string.tv_receive_installing_plain) else stringResource(R.string.tv_receive_install))
                     }
-                    Button(onClick = onDismiss) { Text(stringResource(R.string.tv_receive_dismiss)) }
+                    Button(onClick = onDismiss, modifier = Modifier.clickable { onDismiss() }) {
+                        Text(stringResource(R.string.tv_receive_dismiss))
+                    }
                 }
             }
         }
@@ -219,7 +252,7 @@ private fun ReceivedApkCard(
 private fun ApkFileCard(apk: ApkFile, onClick: () -> Unit) {
     val context = LocalContext.current
     val meta = apk.metadata
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             val icon = meta?.icon
             if (icon != null) {
