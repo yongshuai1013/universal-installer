@@ -57,6 +57,7 @@ import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Store
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -148,6 +149,7 @@ fun ManageScreen(
         onUninstall = viewModel::uninstallApp,
         onExtract = viewModel::extractApp,
         onShare = viewModel::shareApp,
+        onAddToServer = viewModel::addToServer,
         onForceStop = viewModel::forceStop,
         onSetEnabled = viewModel::setEnabled,
         onClearData = viewModel::clearAllData,
@@ -199,6 +201,7 @@ private fun UninstallUi(
     onUninstall: (String) -> Unit = {},
     onExtract: (String, String) -> Unit = { _, _ -> },
     onShare: (String, String) -> Unit = { _, _ -> },
+    onAddToServer: (String, String) -> Unit = { _, _ -> },
     onForceStop: (String, String) -> Unit = { _, _ -> },
     onSetEnabled: (String, String, Boolean) -> Unit = { _, _, _ -> },
     onClearData: (String, String) -> Unit = { _, _ -> },
@@ -282,6 +285,10 @@ private fun UninstallUi(
             onExtract = {
                 actionTarget = null
                 onExtract(target.packageName, target.appName)
+            },
+            onAddToServer = {
+                actionTarget = null
+                onAddToServer(target.packageName, target.appName)
             },
             onForceStop = {
                 actionTarget = null
@@ -396,6 +403,12 @@ private fun UninstallUi(
                             )
                         }
                     }
+                    ExtractMode.Server -> {
+                        snackbarHostState.showSnackbar(
+                            message = "Added $fileName to server",
+                            withDismissAction = true,
+                        )
+                    }
                 }
                 onDismissExtractResult()
             }            is ExtractState.Error -> {
@@ -404,6 +417,8 @@ private fun UninstallUi(
                         resource.getString(R.string.manage_action_share_failed, s.message)
                     ExtractMode.Backup ->
                         resource.getString(R.string.extract_failed, s.message)
+                    ExtractMode.Server ->
+                        "Failed to add to server: ${s.message}"
                 }
                 snackbarHostState.showSnackbar(message = msg, withDismissAction = true)
                 onDismissExtractResult()
@@ -1483,6 +1498,7 @@ private fun AppActionSheet(
     onOpenApp: () -> Unit,
     onOpenAppInfo: () -> Unit,
     onShare: () -> Unit,
+    onAddToServer: () -> Unit,
     onExtract: () -> Unit,
     onForceStop: () -> Unit,
     onSetEnabled: (Boolean) -> Unit,
@@ -1692,6 +1708,14 @@ private fun AppActionSheet(
             subtitle = stringResource(R.string.manage_action_share_sub),
             enabled = !extractInProgress,
             onClick = onShare,
+        )
+        ActionRow(
+            icon = Icons.Rounded.CloudUpload,
+            iconTint = MaterialTheme.colorScheme.primary,
+            label = "Add to Server",
+            subtitle = "Extract and add to local sharing server",
+            enabled = !extractInProgress,
+            onClick = onAddToServer,
         )
         ActionRow(
             icon = if (app.hasSplits) Icons.Rounded.FolderZip else Icons.Rounded.Inventory2,

@@ -91,7 +91,7 @@ sealed interface SystemAppPrompt {
  * Backup → save to public Download/.../Extracted, snackbar with "Open folder" action.
  * Share  → save to cacheDir, fire ACTION_SEND chooser as soon as the copy completes.
  */
-enum class ExtractMode { Backup, Share }
+enum class ExtractMode { Backup, Share, Server }
 
 sealed interface ExtractState {
     data object Idle : ExtractState
@@ -233,6 +233,14 @@ class ManageViewModel(
         runExtraction(packageName, appName, ExtractMode.Share, outputDir = shareDir)
     }
 
+    /**
+     * Extract directly to the folder served by the local HTTP sharing server.
+     */
+    fun addToServer(packageName: String, appName: String) {
+        val serverDir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "Universal Installer").apply { mkdirs() }
+        runExtraction(packageName, appName, ExtractMode.Server, outputDir = serverDir)
+    }
+
     private fun runExtraction(
         packageName: String,
         appName: String,
@@ -250,7 +258,7 @@ class ManageViewModel(
             val result = ApkExtractor.extract(
                 context = application,
                 packageName = packageName,
-                outputDir = if (mode == ExtractMode.Share) {
+                outputDir = if (mode == ExtractMode.Share || mode == ExtractMode.Server) {
                     outputDir?.let { DocumentFile.fromFile(it) }
                 } else {
                     customPathUri?.let { DocumentFile.fromTreeUri(application, Uri.parse(it)) }
