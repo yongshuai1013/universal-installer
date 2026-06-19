@@ -12,6 +12,10 @@
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
+    
+    <!-- Remove restricted permissions inherited from Ackpine library -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ENFORCE_UPDATE_OWNERSHIP" tools:node="remove" />
     <!-- List sideloaded APKs via MediaStore (no all-files-access screen on TV). -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
