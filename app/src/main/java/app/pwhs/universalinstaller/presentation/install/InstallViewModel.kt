@@ -1809,7 +1809,7 @@ class InstallViewModel(
                         // post-loop block below for the rationale. Always keep the split
                         // in splitEntries so the user can still toggle it in the picker.
                         splitEntries.add(SplitEntry(
-                            name = apk.locale.displayLanguage.ifBlank { apk.locale.toLanguageTag() },
+                            name = apk.locale.toLanguageTag(),
                             type = SplitType.Locale,
                             uri = apk.uri,
                             sizeBytes = apk.size,
@@ -1977,6 +1977,15 @@ class InstallViewModel(
         for (token in splitName.lowercase().split('.')) {
             if (token in ABI_TOKENS) return SplitType.Libs to token.uppercase()
             if (token in DPI_TOKENS) return SplitType.ScreenDensity to "${token.uppercase()}dpi"
+            
+            // Try to match language token
+            val langToken = token.replace('-', '_').replace('+', '_').removePrefix("b_")
+            val locale = java.util.Locale.forLanguageTag(langToken.replace('_', '-'))
+            if (locale.language.isNotEmpty() && locale.language.length in 2..3) {
+                if (java.util.Locale.getISOLanguages().contains(locale.language)) {
+                    return SplitType.Locale to locale.toLanguageTag()
+                }
+            }
         }
         return null
     }
@@ -2017,16 +2026,16 @@ class InstallViewModel(
             }
             ?.name
 
-        // Locale: include splits whose displayed language matches any of the user's preferred
-        // locales. We match against the top-priority locale's display language (English form
-        // matches `Apk.Localization.locale.displayLanguage` from the parser); fallback English
+        // Locale: include splits whose language matches any of the user's preferred
+        // locales. We extract the language tag and the language code; fallback 'en'
         // also stays selected so apps with English-only resources don't lose all strings.
         val userLangs = run {
             val list = androidx.core.os.LocaleListCompat.getDefault()
-            (0 until list.size()).mapNotNull { 
-                list[it]?.getDisplayLanguage(java.util.Locale.ENGLISH)?.lowercase()
+            (0 until list.size()).flatMap { 
+                val loc = list[it]
+                if (loc != null) listOf(loc.toLanguageTag().lowercase(), loc.language.lowercase()) else emptyList()
             }
-        }.toSet() + "english"
+        }.toSet() + "en"
 
         for (i in entries.indices) {
             val e = entries[i]
@@ -2041,7 +2050,11 @@ class InstallViewModel(
                     isBest || containsBest
                 }
                 SplitType.ScreenDensity -> e.name.equals(densityBest, ignoreCase = true)
-                SplitType.Locale -> e.name.lowercase() in userLangs
+                SplitType.Locale -> {
+                    val splitTag = e.name.lowercase()
+                    val splitBase = splitTag.substringBefore('-').substringBefore('_')
+                    splitTag in userLangs || splitBase in userLangs
+                }
             }
             if (e.selected != keep) entries[i] = e.copy(selected = keep)
         }
