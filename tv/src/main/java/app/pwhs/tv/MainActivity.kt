@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import app.pwhs.core.data.local.SharedPrefsKeys
 import app.pwhs.core.data.local.dataStore
+import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.launch
 import app.pwhs.core.presentation.onboarding.OnboardingScreen
 import app.pwhs.tv.presentation.splash.SplashScreen
 import app.pwhs.tv.ui.theme.UniversalInstallerTheme
@@ -23,10 +25,16 @@ import kotlinx.coroutines.flow.map
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.pwhs.core.domain.ThemeMode
 
+import app.pwhs.tv.util.LocaleHelper
+
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ReceiverService.start(applicationContext)
+        
         setContent {
             val themeModeName by dataStore.data
                 .map { it[stringPreferencesKey("theme_mode")] ?: ThemeMode.System.name }
@@ -51,11 +59,18 @@ class MainActivity : ComponentActivity() {
                     // Still loading preferences
                     SplashScreen()
                 } else if (onboardingCompleted == false) {
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
                     OnboardingScreen(onFinish = {
-                        // After onboarding, the UI will recompose because onboardingCompleted flow updates
-                        // We need to actually trigger a write to the dataStore
+                        scope.launch {
+                            dataStore.edit { prefs ->
+                                prefs[SharedPrefsKeys.ONBOARDING_COMPLETED] = true
+                            }
+                        }
                     })
                 } else {
+                    LaunchedEffect(Unit) {
+                        ReceiverService.start(applicationContext)
+                    }
                     TvApp()
                     AnimatedVisibility(visible = showSplash, enter = fadeIn(), exit = fadeOut()) {
                         SplashScreen()

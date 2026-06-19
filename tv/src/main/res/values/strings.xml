@@ -84,4 +84,11 @@
     <string name="install_storage_value">%1$s free / %2$s</string>
     <string name="tv_receive_local_files">Local Downloads</string>
     <string name="tv_receive_grant_all_files">Grant All Files Access</string>
-    </resources>
+    <string name="tv_manage_storage_used">Storage used</string>
+    <string name="tv_manage_type">Type</string>
+    <string name="tv_manage_system_app">System Application</string>
+    <string name="tv_manage_status">Status</string>
+    <string name="tv_manage_status_disabled">Disabled</string>
+    <string name="tv_manage_extracted_success">Extracted ✓</string>
+    <string name="tv_manage_extract_error_prefix">Error: %s</string>
+</resources>

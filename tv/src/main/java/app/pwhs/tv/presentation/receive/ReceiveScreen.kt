@@ -101,7 +101,7 @@ fun ReceiveScreen(
     val installingLabel by viewModel.installingLabel.collectAsState()
     
     val storageStats = remember { StorageUtil.getStorageStats() }
-    var selectedApk by remember { mutableStateOf<Any?>(null) } 
+    var selectedApk by remember { mutableStateOf<TvApkItem?>(null) } 
     var currentTab by remember { mutableStateOf(InstallTab.Receive) }
 
     val installFocus = remember { FocusRequester() }
@@ -138,7 +138,7 @@ fun ReceiveScreen(
     // Details Dialog
     selectedApk?.let { apk ->
         ApkDetailsDialog(
-            apk = apk,
+            apkItem = apk,
             isInstalling = installingLabel != null,
             onDismiss = { selectedApk = null },
             onInstall = { uri, isBundle, label ->
@@ -208,14 +208,14 @@ fun ReceiveScreen(
                         pending = pending,
                         installingLabel = installingLabel,
                         installFocus = installFocus,
-                        onInstall = { selectedApk = it },
+                        onInstall = { selectedApk = TvApkItem.Received(it) },
                         onDismissPending = { viewModel.dismissPending() }
                     )
                     InstallTab.LocalFiles -> LocalFilesContent(
                         hasStorage = hasStorage,
                         isScanning = isScanning,
                         downloads = downloads,
-                        onApkClick = { selectedApk = it },
+                        onApkClick = { selectedApk = TvApkItem.Local(it) },
                         onGrantPermission = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
@@ -613,10 +613,15 @@ private fun TvStorageCard(stats: StorageStats) {
     }
 }
 
+sealed interface TvApkItem {
+    data class Received(val apk: ReceivedApk) : TvApkItem
+    data class Local(val apk: ApkFile) : TvApkItem
+}
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun ApkDetailsDialog(
-    apk: Any,
+    apkItem: TvApkItem,
     isInstalling: Boolean,
     onDismiss: () -> Unit,
     onInstall: (Uri, Boolean, String) -> Unit
@@ -633,28 +638,28 @@ private fun ApkDetailsDialog(
     val minSdk: Int
     val targetSdk: Int
 
-    when (apk) {
-        is ReceivedApk -> {
-            val meta = apk.metadata
-            name = meta?.appName ?: apk.fileName
+    when (apkItem) {
+        is TvApkItem.Received -> {
+            val meta = apkItem.apk.metadata
+            name = meta?.appName ?: apkItem.apk.fileName
             pkg = meta?.packageName ?: ""
             version = meta?.versionName ?: ""
-            size = apk.sizeBytes
+            size = apkItem.apk.sizeBytes
             icon = meta?.icon?.asImageBitmap()
-            uri = Uri.fromFile(File(apk.path))
-            isBundle = apk.fileName.isBundleName()
+            uri = Uri.fromFile(File(apkItem.apk.path))
+            isBundle = apkItem.apk.fileName.isBundleName()
             minSdk = meta?.minSdk ?: 0
             targetSdk = meta?.targetSdk ?: 0
         }
-        is ApkFile -> {
-            val meta = apk.metadata
-            name = meta?.appName ?: apk.displayName
+        is TvApkItem.Local -> {
+            val meta = apkItem.apk.metadata
+            name = meta?.appName ?: apkItem.apk.displayName
             pkg = meta?.packageName ?: ""
             version = meta?.versionName ?: ""
-            size = apk.sizeBytes
+            size = apkItem.apk.sizeBytes
             icon = meta?.icon?.asImageBitmap()
-            uri = Uri.parse(apk.uri)
-            isBundle = apk.isBundle
+            uri = Uri.parse(apkItem.apk.uri)
+            isBundle = apkItem.apk.isBundle
             minSdk = meta?.minSdk ?: 0
             targetSdk = meta?.targetSdk ?: 0
         }

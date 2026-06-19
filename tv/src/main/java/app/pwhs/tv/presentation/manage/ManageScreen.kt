@@ -97,19 +97,19 @@ fun ManageScreen(
         }
     }
 
-    Row(modifier = modifier.fillMaxSize().background(Color(0xFF101214))) {
+    Row(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Left Column: Apps List (with Sidebar Background)
         Column(
             modifier = Modifier
                 .weight(1.1f)
                 .fillMaxHeight()
-                .background(Color(0xFF181A1C)) // Darker sidebar background
+                .background(MaterialTheme.colorScheme.surface) // Darker sidebar background
                 .padding(horizontal = 32.dp, vertical = 40.dp)
         ) {
             Text(
-                text = "Apps",
+                text = stringResource(R.string.tv_manage_title),
                 style = MaterialTheme.typography.displaySmall,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             )
             
@@ -130,12 +130,12 @@ fun ManageScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                         unfocusedContainerColor = Color.Transparent,
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.Gray
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
             }
@@ -160,6 +160,26 @@ fun ManageScreen(
                 )
             }
 
+            Spacer(Modifier.height(12.dp))
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SmallFilterChip(
+                    selected = uiState.sortBy == SortBy.Name,
+                    label = stringResource(R.string.tv_manage_sort_name),
+                    onClick = { viewModel.setSortBy(SortBy.Name) }
+                )
+                SmallFilterChip(
+                    selected = uiState.sortBy == SortBy.Size,
+                    label = stringResource(R.string.tv_manage_sort_size),
+                    onClick = { viewModel.setSortBy(SortBy.Size) }
+                )
+                SmallFilterChip(
+                    selected = uiState.sortBy == SortBy.Date,
+                    label = stringResource(R.string.tv_manage_sort_date),
+                    onClick = { viewModel.setSortBy(SortBy.Date) }
+                )
+            }
+
             Spacer(Modifier.height(24.dp))
 
             LazyColumn(
@@ -177,7 +197,7 @@ fun ManageScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.tv_manage_empty),
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
@@ -199,7 +219,7 @@ fun ManageScreen(
             modifier = Modifier
                 .weight(0.9f)
                 .fillMaxHeight()
-                .background(Color(0xFF101214))
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 48.dp, vertical = 48.dp)
         ) {
             AnimatedContent(
@@ -216,27 +236,27 @@ fun ManageScreen(
                         Text(
                             text = app.appName,
                             style = MaterialTheme.typography.displaySmall,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.SemiBold
                         )
                         
                         Spacer(Modifier.height(12.dp))
                         
                         Text(
-                            text = "Version ${app.versionName}",
+                            text = stringResource(R.string.tv_manage_version_prefix, app.versionName ?: ""),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
                         Text(
                             text = app.packageName,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                         )
 
                         Spacer(Modifier.height(40.dp))
 
                         // Actions - Modern flat list style
-                        ActionItem(label = "Open") {
+                        ActionItem(label = stringResource(R.string.tv_manage_action_open)) {
                             runCatching {
                                 context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { intent ->
                                     context.startActivity(intent)
@@ -244,17 +264,17 @@ fun ManageScreen(
                             }
                         }
                         
-                        ActionItem(label = "Uninstall") {
+                        ActionItem(label = stringResource(R.string.tv_manage_action_uninstall)) {
                             uninstallLauncher.launch(
                                 Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}"))
                             )
                         }
 
-                        ActionItem(label = "Extract APK") {
+                        ActionItem(label = stringResource(R.string.tv_manage_action_extract)) {
                             viewModel.extractApp(app.packageName, app.appName)
                         }
                         
-                        ActionItem(label = "System settings") {
+                        ActionItem(label = stringResource(R.string.tv_manage_action_settings)) {
                             runCatching {
                                 context.startActivity(
                                     Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -267,9 +287,9 @@ fun ManageScreen(
                         Spacer(Modifier.height(40.dp))
                         
                         // Metadata Breakdown
-                        InfoBlock(label = "Storage used", value = formatSize(context, app.sizeBytes))
-                        if (app.isSystemApp) InfoBlock(label = "Type", value = "System Application")
-                        if (!app.enabled) InfoBlock(label = "Status", value = "Disabled")
+                        InfoBlock(label = stringResource(R.string.tv_manage_storage_used), value = formatSize(context, app.sizeBytes))
+                        if (app.isSystemApp) InfoBlock(label = stringResource(R.string.tv_manage_type), value = stringResource(R.string.tv_manage_system_app))
+                        if (!app.enabled) InfoBlock(label = stringResource(R.string.tv_manage_status), value = stringResource(R.string.tv_manage_status_disabled))
                         
                         // Async Status (Extraction)
                         val extractState = uiState.extractState
@@ -278,16 +298,16 @@ fun ManageScreen(
                             when (extractState) {
                                 is ExtractState.Running -> if (extractState.packageName == app.packageName) {
                                     Text(
-                                        text = "Extracting... ${(extractState.bytesCopied * 100 / extractState.totalBytes).toInt()}%",
+                                        text = stringResource(R.string.tv_manage_extracting, (extractState.bytesCopied * 100 / extractState.totalBytes).toInt()),
                                         color = MaterialTheme.colorScheme.primary,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
                                 is ExtractState.Done -> if (extractState.appName == app.appName) {
-                                    Text(text = "Extracted ✓", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                                    Text(text = stringResource(R.string.tv_manage_extracted_success), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
                                 }
                                 is ExtractState.Error -> if (extractState.appName == app.appName) {
-                                    Text(text = "Error: ${extractState.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                                    Text(text = stringResource(R.string.tv_manage_extract_error_prefix, extractState.message), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                                 }
                                 else -> {}
                             }
@@ -334,9 +354,9 @@ private fun AppListRow(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
-            focusedContainerColor = Color.White,
-            contentColor = if (isSelected) Color.White else Color.LightGray,
-            focusedContentColor = Color.Black
+            focusedContainerColor = MaterialTheme.colorScheme.onSurface,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedContentColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -347,7 +367,7 @@ private fun AppListRow(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.1f)),
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (icon != null) {
@@ -391,9 +411,9 @@ private fun ActionItem(
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
-            focusedContainerColor = Color.White.copy(alpha = 0.1f),
-            contentColor = Color.White,
-            focusedContentColor = Color.White
+            focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            focusedContentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Box(
@@ -430,8 +450,8 @@ private fun SmallFilterChip(selected: Boolean, label: String, onClick: () -> Uni
 @Composable
 private fun InfoBlock(label: String, value: String) {
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-        Text(text = value, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.8f))
+        Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
     }
 }
 
@@ -464,6 +484,6 @@ fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape) {
     Box(
         modifier = modifier
             .clip(shape)
-            .background(Color.White.copy(alpha = alpha * 0.15f)),
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = alpha * 0.15f)),
     )
 }

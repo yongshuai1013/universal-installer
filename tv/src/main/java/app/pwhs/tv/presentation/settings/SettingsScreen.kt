@@ -1,5 +1,8 @@
 package app.pwhs.tv.presentation.settings
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import app.pwhs.tv.util.LocaleHelper
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -61,12 +64,19 @@ import kotlinx.coroutines.launch
 
 private const val REPO_URL = "https://github.com/pass-with-high-score/universal-installer"
 
+
 /**
  * Settings/About for the TV app. Modernized with premium Surface effects and Theme selection.
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
+    var showLanguageScreen by remember { mutableStateOf(false) }
+
+    if (showLanguageScreen) {
+        LanguageScreen(onBack = { showLanguageScreen = false })
+        return
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val version = remember {
@@ -131,6 +141,21 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         }
                     },
                     modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // ── Language ────────────────────────────────────────────────────────
+        item { SectionHeader(stringResource(R.string.tv_settings_section_language), Icons.Default.Language) }
+        item {
+            val currentLanguage = remember {
+                val tag = LocaleHelper.getStoredLanguage(context)
+                if (tag.isEmpty()) "System Default" else tag.uppercase()
+            }
+            SettingsCard(onClick = { showLanguageScreen = true }) {
+                TitleValue(
+                    "Language",
+                    currentLanguage
                 )
             }
         }

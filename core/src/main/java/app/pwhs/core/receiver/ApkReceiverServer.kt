@@ -23,33 +23,38 @@ class ApkReceiverServer(
     override fun serve(session: IHTTPSession): Response {
         return when {
             session.method == Method.GET && session.uri == "/" -> uploadPage()
+            session.method == Method.GET && session.uri == "/logo.png" -> serveLogo()
             session.method == Method.POST && session.uri == "/upload" -> handleUpload(session)
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
         }
     }
 
+    private fun serveLogo(): Response {
+        return try {
+            val drawable = context.packageManager.getApplicationIcon(context.applicationInfo)
+            val w = drawable.intrinsicWidth.takeIf { it > 0 } ?: 256
+            val h = drawable.intrinsicHeight.takeIf { it > 0 } ?: 256
+            val bitmap = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            
+            val stream = java.io.ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+            val bytes = stream.toByteArray()
+            newFixedLengthResponse(Response.Status.OK, "image/png", java.io.ByteArrayInputStream(bytes), bytes.size.toLong())
+        } catch (e: Exception) {
+            newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Logo not found")
+        }
+    }
+
     private fun uploadPage(): Response {
-        val html = """
-            <!doctype html><html><head><meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>Send app to TV</title>
-            <style>
-              body{font-family:system-ui,sans-serif;margin:0;background:#111;color:#eee;
-                   display:flex;min-height:100vh;align-items:center;justify-content:center}
-              .card{background:#1d1d1d;padding:28px;border-radius:16px;width:88%;max-width:420px}
-              h1{font-size:20px;margin:0 0 16px}
-              input[type=file]{width:100%;margin:12px 0;color:#ccc}
-              button{width:100%;padding:14px;border:0;border-radius:10px;background:#4c8bf5;
-                     color:#fff;font-size:16px;font-weight:600}
-              .hint{color:#888;font-size:13px;margin-top:12px}
-            </style></head><body>
-            <form class="card" method="post" enctype="multipart/form-data" action="/upload?token=$token">
-              <h1>Send an app to your TV</h1>
-              <input type="file" name="apk" accept=".apk,.apks,.xapk,.apkm" required>
-              <button type="submit">Send to TV</button>
-              <div class="hint">.apk and bundles (.apks/.xapk/.apkm) supported. The TV will ask to confirm the install.</div>
-            </form></body></html>
-        """.trimIndent()
+        val htmlTemplate = try {
+            context.assets.open("upload_page.html").bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            "<html><body><h2>Error loading UI</h2><p>${e.message}</p></body></html>"
+        }
+        val html = htmlTemplate.replace("{{TOKEN}}", token)
         return newFixedLengthResponse(Response.Status.OK, MIME_HTML, html)
     }
 
