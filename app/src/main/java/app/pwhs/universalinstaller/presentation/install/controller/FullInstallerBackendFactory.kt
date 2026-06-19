@@ -173,6 +173,9 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
     override suspend fun clearAppDataViaRoot(packageName: String): Result<String> =
         runRootShell(packageName, "pm clear $packageName", successToken = "Success")
 
+    override suspend fun launchAppViaRoot(packageName: String): Result<String> =
+        runRootShell(packageName, "monkey -p $packageName -c android.intent.category.LAUNCHER 1", successToken = null)
+
     override suspend fun setSystemAppEnabled(packageName: String, enabled: Boolean): Result<String> {
         val cmd = if (enabled) "pm enable $packageName" else "pm disable-user $packageName"
         return runRootShell(packageName, cmd, successToken = null)

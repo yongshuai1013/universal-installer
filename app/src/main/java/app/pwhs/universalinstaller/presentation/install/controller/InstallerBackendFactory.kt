@@ -66,6 +66,9 @@ interface InstallerBackendFactory {
     /** `pm clear <pkg>` via root shell — wipes cache + data + obb. Store flavor → failure. */
     suspend fun clearAppDataViaRoot(packageName: String): Result<String>
 
+    /** Launches the app via root shell using monkey to bypass ROM restrictions. */
+    suspend fun launchAppViaRoot(packageName: String): Result<String>
+
     /**
      * Enables or disables a system app via root shell.
      * Store flavor always returns failure.

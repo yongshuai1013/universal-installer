@@ -146,6 +146,7 @@ fun ManageScreen(
         uiState = uiState,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onToggleAppFilter = viewModel::toggleAppFilter,
+        onOpenAppPrivileged = viewModel::openAppPrivileged,
         onUninstall = viewModel::uninstallApp,
         onExtract = viewModel::extractApp,
         onShare = viewModel::shareApp,
@@ -198,6 +199,7 @@ private fun UninstallUi(
     uiState: ManageUiState = ManageUiState(),
     onSearchQueryChanged: (String) -> Unit = {},
     onToggleAppFilter: (AppFilter) -> Unit = {},
+    onOpenAppPrivileged: (String, String) -> Unit = { _, _ -> },
     onUninstall: (String) -> Unit = {},
     onExtract: (String, String) -> Unit = { _, _ -> },
     onShare: (String, String) -> Unit = { _, _ -> },
@@ -272,7 +274,11 @@ private fun UninstallUi(
             privilegedReady = uiState.privilegedReady,
             onOpenApp = {
                 actionTarget = null
-                launchInstalledApp(context, target.packageName)
+                if (uiState.privilegedReady) {
+                    onOpenAppPrivileged(target.packageName, target.appName)
+                } else {
+                    launchInstalledApp(context, target.packageName)
+                }
             },
             onOpenAppInfo = {
                 actionTarget = null

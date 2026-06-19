@@ -110,6 +110,10 @@ object ShizukuShellExecutor {
     suspend fun clearAppData(packageName: String): Result<String> =
         runShell(packageName, "pm clear $packageName", successToken = "Success")
 
+    /** Launches the app via Shizuku shell using monkey to bypass ROM restrictions. */
+    suspend fun launchApp(packageName: String): Result<String> =
+        runShell(packageName, "monkey -p $packageName -c android.intent.category.LAUNCHER 1", successToken = null)
+
     /**
      * Single-shot shell. [successToken] gates "did the command actually do the thing" beyond
      * the exit code — `pm` is notorious for printing soft failures ("Failure [...]") with

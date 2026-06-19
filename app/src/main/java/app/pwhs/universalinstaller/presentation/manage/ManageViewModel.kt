@@ -291,6 +291,27 @@ class ManageViewModel(
         }
     }
 
+    fun openAppPrivileged(packageName: String, appName: String) {
+        viewModelScope.launch {
+            val executor = resolvePrivilegedExecutor()
+            if (executor == null) {
+                _privilegedActionResult.value = PrivilegedActionResult.Failure(
+                    application.getString(R.string.manage_privileged_unavailable)
+                )
+                return@launch
+            }
+            val result = when (executor) {
+                PrivilegedExecutor.Root -> backendFactory.launchAppViaRoot(packageName)
+                PrivilegedExecutor.Shizuku -> ShizukuShellExecutor.launchApp(packageName)
+            }
+            if (!result.isSuccess) {
+                _privilegedActionResult.value = PrivilegedActionResult.Failure(
+                    "Launch failed: ${result.exceptionOrNull()?.message ?: "unknown error"}"
+                )
+            }
+        }
+    }
+
     fun forceStop(packageName: String, appName: String) {
         // Block self-stop — we'd kill the very process running the bottom sheet, leaving the
         // user staring at a frozen UI until system_server force-resumes us.
