@@ -39,7 +39,6 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
      *   - false → DENIED (manager said no)
      */
     override suspend fun probeRootState(): RootState = withContext(Dispatchers.IO) {
-        if (!suBinaryExists()) return@withContext RootState.NOT_ROOTED
         try {
             when (Shell.isAppGrantedRoot()) {
                 null -> RootState.UNKNOWN
@@ -52,33 +51,7 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
         }
     }
 
-    /**
-     * Checks for the `su` binary on every path Magisk/KernelSU/APatch/SuperSU has ever
-     * used, plus walks `$PATH` like `which su` would — Magisk mounts the binary into a
-     * randomized directory under `/data/adb/` on newer versions, and the only thing
-     * guaranteed visible from app context is its presence on `$PATH`.
-     */
-    private fun suBinaryExists(): Boolean {
-        val knownPaths = listOf(
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/sbin/su",
-            "/system/sbin/su",
-            "/su/bin/su",
-            "/data/adb/magisk/su",
-            "/data/adb/ksud",
-            "/data/adb/ap/bin/apd",
-        )
-        if (knownPaths.any { runCatching { java.io.File(it).exists() }.getOrDefault(false) }) {
-            return true
-        }
-        val pathEnv = System.getenv("PATH") ?: return false
-        return pathEnv.split(':').any { dir ->
-            dir.isNotBlank() && runCatching {
-                java.io.File(dir, "su").exists()
-            }.getOrDefault(false)
-        }
-    }
+
 
     /**
      * Blocking — may surface the Magisk/KernelSU prompt. Caller must confine this to a
