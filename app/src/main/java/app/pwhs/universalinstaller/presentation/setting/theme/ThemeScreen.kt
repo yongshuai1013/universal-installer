@@ -52,7 +52,7 @@ fun ThemeScreen(
 private fun ThemeUi(
     modifier: Modifier = Modifier,
     themeMode: ThemeMode = ThemeMode.System,
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     amoledMode: Boolean = false,
     onThemeChanged: (ThemeMode) -> Unit = {},
     onDynamicColorChanged: (Boolean) -> Unit = {},

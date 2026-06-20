@@ -61,7 +61,7 @@ abstract class BaseActivity : FragmentActivity() {
                     val prefs = dataStore.data.first()
                     val name = prefs[stringPreferencesKey("theme_mode")] ?: ThemeMode.System.name
                     val mode = ThemeMode.entries.find { it.name == name } ?: ThemeMode.System
-                    val dynamicColor = prefs[booleanPreferencesKey("dynamic_color")] ?: true
+                    val dynamicColor = prefs[booleanPreferencesKey("dynamic_color")] ?: false
                     val amoledMode = prefs[booleanPreferencesKey("amoled_mode")] ?: false
                     AppThemeState(mode, dynamicColor, amoledMode)
                 }
@@ -71,7 +71,7 @@ abstract class BaseActivity : FragmentActivity() {
                 dataStore.data.map { prefs ->
                     val name = prefs[stringPreferencesKey("theme_mode")] ?: ThemeMode.System.name
                     val mode = ThemeMode.entries.find { it.name == name } ?: ThemeMode.System
-                    val dynamicColor = prefs[booleanPreferencesKey("dynamic_color")] ?: true
+                    val dynamicColor = prefs[booleanPreferencesKey("dynamic_color")] ?: false
                     val amoledMode = prefs[booleanPreferencesKey("amoled_mode")] ?: false
                     AppThemeState(mode, dynamicColor, amoledMode)
                 }

@@ -428,9 +428,19 @@ private fun UninstallUi(
                         )
                     }
                     ExtractMode.Reinstall -> {
+                        val installUri = if (s.uri.scheme == "file") {
+                            androidx.core.content.FileProvider.getUriForFile(
+                                context,
+                                "${app.pwhs.universalinstaller.BuildConfig.APPLICATION_ID}.fileprovider",
+                                java.io.File(s.uri.path!!),
+                            )
+                        } else {
+                            s.uri
+                        }
                         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                            setDataAndType(s.uri, "application/vnd.android.package-archive")
+                            setDataAndType(installUri, "application/vnd.android.package-archive")
                             addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            setPackage(app.pwhs.universalinstaller.BuildConfig.APPLICATION_ID)
                         }
                         runCatching { context.startActivity(intent) }.onFailure {
                             snackbarHostState.showSnackbar(

@@ -301,7 +301,7 @@ class ManageViewModel(
             val result = ApkExtractor.extract(
                 context = application,
                 packageName = packageName,
-                outputDir = if (mode == ExtractMode.Share || mode == ExtractMode.Server) {
+                outputDir = if (mode == ExtractMode.Share || mode == ExtractMode.Server || mode == ExtractMode.Reinstall) {
                     outputDir?.let { DocumentFile.fromFile(it) }
                 } else {
                     customPathUri?.let { DocumentFile.fromTreeUri(application, Uri.parse(it)) }
