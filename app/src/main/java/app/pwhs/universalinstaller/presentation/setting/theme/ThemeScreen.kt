@@ -26,6 +26,10 @@ import app.pwhs.core.domain.AppThemePreset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.foundation.BorderStroke
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -190,48 +194,20 @@ private fun ThemeUi(
                 }
             }
 
-            AppThemePreset.entries.forEach { preset ->
-                item {
-                    val labelRes = when (preset) {
-                        AppThemePreset.Orange -> R.string.theme_preset_orange
-                        AppThemePreset.Blue -> R.string.theme_preset_blue
-                        AppThemePreset.Green -> R.string.theme_preset_green
-                        AppThemePreset.Red -> R.string.theme_preset_red
-                        AppThemePreset.Purple -> R.string.theme_preset_purple
-                    }
-                    val colorSample = when (preset) {
-                        AppThemePreset.Orange -> Color(0xFFEA580C)
-                        AppThemePreset.Blue -> Color(0xFF0284C7)
-                        AppThemePreset.Green -> Color(0xFF16A34A)
-                        AppThemePreset.Red -> Color(0xFFDC2626)
-                        AppThemePreset.Purple -> Color(0xFF7C3AED)
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !dynamicColor) { onThemePresetChanged(preset) }
-                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .size(20.dp)
-                                .background(
-                                    color = if (dynamicColor) colorSample.copy(alpha = 0.38f) else colorSample,
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-                        )
-                        Text(
-                            text = stringResource(labelRes),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (dynamicColor) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified,
-                            modifier = Modifier.weight(1f)
-                        )
-                        RadioButton(
+            item {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(AppThemePreset.entries) { preset ->
+                        ThemePresetCard(
+                            preset = preset,
                             selected = themePreset == preset && !dynamicColor,
-                            onClick = { onThemePresetChanged(preset) },
-                            enabled = !dynamicColor
+                            enabled = !dynamicColor,
+                            onClick = { onThemePresetChanged(preset) }
                         )
                     }
                 }
@@ -256,6 +232,91 @@ private fun ThemeUi(
                     modifier = Modifier.clickable(enabled = isDarkEnabled) {
                         onAmoledModeChanged(!amoledMode)
                     }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemePresetCard(
+    preset: AppThemePreset,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val primaryColor = when (preset) {
+        AppThemePreset.Orange -> Color(0xFFEA580C)
+        AppThemePreset.Blue -> Color(0xFF0284C7)
+        AppThemePreset.Green -> Color(0xFF16A34A)
+        AppThemePreset.Red -> Color(0xFFDC2626)
+        AppThemePreset.Purple -> Color(0xFF7C3AED)
+    }
+    val secondaryColor = when (preset) {
+        AppThemePreset.Orange -> Color(0xFF3B82F6)
+        AppThemePreset.Blue -> Color(0xFF0F766E)
+        AppThemePreset.Green -> Color(0xFF0891B2)
+        AppThemePreset.Red -> Color(0xFFD97706)
+        AppThemePreset.Purple -> Color(0xFFDB2777)
+    }
+    val nameRes = when (preset) {
+        AppThemePreset.Orange -> R.string.theme_preset_orange
+        AppThemePreset.Blue -> R.string.theme_preset_blue
+        AppThemePreset.Green -> R.string.theme_preset_green
+        AppThemePreset.Red -> R.string.theme_preset_red
+        AppThemePreset.Purple -> R.string.theme_preset_purple
+    }
+
+    val alpha = if (enabled) 1.0f else 0.38f
+
+    Card(
+        modifier = Modifier
+            .width(140.dp)
+            .height(100.dp)
+            .clickable(enabled = enabled) { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        border = if (selected && enabled) BorderStroke(3.dp, primaryColor) else null,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = alpha),
+                            secondaryColor.copy(alpha = alpha)
+                        )
+                    )
+                )
+        ) {
+            // Checkmark in the corner
+            if (selected && enabled) {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(20.dp)
+                )
+            }
+
+            // Theme Name at the bottom
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color.Black.copy(alpha = 0.4f * alpha))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(nameRes),
+                    color = Color.White.copy(alpha = alpha),
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
         }
