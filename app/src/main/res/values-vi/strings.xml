@@ -319,6 +319,13 @@
     <string name="theme_dynamic_color_subtitle">Sử dụng màu hình nền hệ thống cho các điểm nhấn của ứng dụng (yêu cầu Android 12+)</string>
     <string name="theme_amoled_mode_title">Đen AMOLED</string>
     <string name="theme_amoled_mode_subtitle">Sử dụng nền đen tuyền trong chế độ tối</string>
+    <string name="theme_preset_title">Tông màu ứng dụng</string>
+    <string name="theme_preset_subtitle">Chọn tông màu chủ đạo cho các điểm nhấn của ứng dụng</string>
+    <string name="theme_preset_orange">Cam (Mặc định)</string>
+    <string name="theme_preset_blue">Xanh dương</string>
+    <string name="theme_preset_green">Xanh lá cây</string>
+    <string name="theme_preset_red">Đỏ</string>
+    <string name="theme_preset_purple">Tím</string>
     <string name="txt_manage">Quản lý</string>
     <string name="extract_label_split">Chia nhỏ (APKS)</string>
     <string name="extract_label_single">APK đơn</string>

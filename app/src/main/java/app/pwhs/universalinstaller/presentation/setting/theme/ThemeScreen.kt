@@ -22,6 +22,10 @@ import androidx.compose.ui.unit.dp
 import app.pwhs.universalinstaller.R
 import app.pwhs.universalinstaller.presentation.setting.SettingViewModel
 import app.pwhs.core.domain.ThemeMode
+import app.pwhs.core.domain.AppThemePreset
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -37,9 +41,11 @@ fun ThemeScreen(
         themeMode = uiState.themeMode,
         dynamicColor = uiState.dynamicColor,
         amoledMode = uiState.amoledMode,
+        themePreset = uiState.themePreset,
         onThemeChanged = viewModel::setThemeMode,
         onDynamicColorChanged = viewModel::setDynamicColor,
         onAmoledModeChanged = viewModel::setAmoledMode,
+        onThemePresetChanged = viewModel::setThemePreset,
         onBack = {
             val a = context as? android.app.Activity
             a?.finish()
@@ -54,9 +60,11 @@ private fun ThemeUi(
     themeMode: ThemeMode = ThemeMode.System,
     dynamicColor: Boolean = false,
     amoledMode: Boolean = false,
+    themePreset: AppThemePreset = AppThemePreset.Orange,
     onThemeChanged: (ThemeMode) -> Unit = {},
     onDynamicColorChanged: (Boolean) -> Unit = {},
     onAmoledModeChanged: (Boolean) -> Unit = {},
+    onThemePresetChanged: (AppThemePreset) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -160,6 +168,77 @@ private fun ThemeUi(
                         onDynamicColorChanged(!dynamicColor)
                     }
                 )
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            }
+
+            item {
+                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
+                    Text(
+                        text = stringResource(R.string.theme_preset_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (dynamicColor) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = stringResource(R.string.theme_preset_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (dynamicColor) 0.38f else 1.0f),
+                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                    )
+                }
+            }
+
+            AppThemePreset.entries.forEach { preset ->
+                item {
+                    val labelRes = when (preset) {
+                        AppThemePreset.Orange -> R.string.theme_preset_orange
+                        AppThemePreset.Blue -> R.string.theme_preset_blue
+                        AppThemePreset.Green -> R.string.theme_preset_green
+                        AppThemePreset.Red -> R.string.theme_preset_red
+                        AppThemePreset.Purple -> R.string.theme_preset_purple
+                    }
+                    val colorSample = when (preset) {
+                        AppThemePreset.Orange -> Color(0xFFEA580C)
+                        AppThemePreset.Blue -> Color(0xFF0284C7)
+                        AppThemePreset.Green -> Color(0xFF16A34A)
+                        AppThemePreset.Red -> Color(0xFFDC2626)
+                        AppThemePreset.Purple -> Color(0xFF7C3AED)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !dynamicColor) { onThemePresetChanged(preset) }
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(20.dp)
+                                .background(
+                                    color = if (dynamicColor) colorSample.copy(alpha = 0.38f) else colorSample,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                        )
+                        Text(
+                            text = stringResource(labelRes),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (dynamicColor) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else Color.Unspecified,
+                            modifier = Modifier.weight(1f)
+                        )
+                        RadioButton(
+                            selected = themePreset == preset && !dynamicColor,
+                            onClick = { onThemePresetChanged(preset) },
+                            enabled = !dynamicColor
+                        )
+                    }
+                }
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             }
 
             item {

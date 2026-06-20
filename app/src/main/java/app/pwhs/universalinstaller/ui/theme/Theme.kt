@@ -9,6 +9,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -16,6 +17,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import app.pwhs.core.domain.AppThemePreset
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
@@ -81,6 +83,91 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerHighest = SurfaceContainerHighestDark,
 )
 
+private val OrangeLightColorScheme = LightColorScheme
+private val OrangeDarkColorScheme = DarkColorScheme
+
+private val BlueLightColorScheme = LightColorScheme.copy(
+    primary = Color(0xFF0284C7),
+    primaryContainer = Color(0xFFE0F2FE),
+    onPrimaryContainer = Color(0xFF0369A1),
+    secondary = Color(0xFF0F766E),
+    secondaryContainer = Color(0xFFCCFBF1),
+    tertiary = Color(0xFF6366F1),
+)
+
+private val BlueDarkColorScheme = DarkColorScheme.copy(
+    primary = Color(0xFF38BDF8),
+    primaryContainer = Color(0xFF0369A1),
+    onPrimaryContainer = Color(0xFFE0F2FE),
+    secondary = Color(0xFF2DD4BF),
+    secondaryContainer = Color(0xFF0F766E),
+    tertiary = Color(0xFF818CF8),
+)
+
+private val GreenLightColorScheme = LightColorScheme.copy(
+    primary = Color(0xFF16A34A),
+    primaryContainer = Color(0xFFDCFCE7),
+    onPrimaryContainer = Color(0xFF14532D),
+    secondary = Color(0xFF0891B2),
+    secondaryContainer = Color(0xFFECFEFF),
+    tertiary = Color(0xFFCA8A04),
+)
+
+private val GreenDarkColorScheme = DarkColorScheme.copy(
+    primary = Color(0xFF4ADE80),
+    primaryContainer = Color(0xFF15803D),
+    onPrimaryContainer = Color(0xFFDCFCE7),
+    secondary = Color(0xFF22D3EE),
+    secondaryContainer = Color(0xFF0891B2),
+    tertiary = Color(0xFFFDE047),
+)
+
+private val RedLightColorScheme = LightColorScheme.copy(
+    primary = Color(0xFFDC2626),
+    primaryContainer = Color(0xFFFEE2E2),
+    onPrimaryContainer = Color(0xFF7F1D1D),
+    secondary = Color(0xFFD97706),
+    secondaryContainer = Color(0xFFFEF3C7),
+    tertiary = Color(0xFF2563EB),
+)
+
+private val RedDarkColorScheme = DarkColorScheme.copy(
+    primary = Color(0xFFFCA5A5),
+    primaryContainer = Color(0xFFB91C1C),
+    onPrimaryContainer = Color(0xFFFEE2E2),
+    secondary = Color(0xFFF59E0B),
+    secondaryContainer = Color(0xFF78350F),
+    tertiary = Color(0xFF60A5FA),
+)
+
+private val PurpleLightColorScheme = LightColorScheme.copy(
+    primary = Color(0xFF7C3AED),
+    primaryContainer = Color(0xFFEDE9FE),
+    onPrimaryContainer = Color(0xFF2E1065),
+    secondary = Color(0xFFDB2777),
+    secondaryContainer = Color(0xFFFCE7F3),
+    tertiary = Color(0xFF059669),
+)
+
+private val PurpleDarkColorScheme = DarkColorScheme.copy(
+    primary = Color(0xFFC084FC),
+    primaryContainer = Color(0xFF6B21A8),
+    onPrimaryContainer = Color(0xFFEDE9FE),
+    secondary = Color(0xFFF472B6),
+    secondaryContainer = Color(0xFF831843),
+    tertiary = Color(0xFF34D399),
+)
+
+private fun getPresetColorScheme(darkTheme: Boolean, preset: AppThemePreset): ColorScheme {
+    return when (preset) {
+        AppThemePreset.Orange -> if (darkTheme) OrangeDarkColorScheme else OrangeLightColorScheme
+        AppThemePreset.Blue -> if (darkTheme) BlueDarkColorScheme else BlueLightColorScheme
+        AppThemePreset.Green -> if (darkTheme) GreenDarkColorScheme else GreenLightColorScheme
+        AppThemePreset.Red -> if (darkTheme) RedDarkColorScheme else RedLightColorScheme
+        AppThemePreset.Purple -> if (darkTheme) PurpleDarkColorScheme else PurpleLightColorScheme
+    }
+}
+
 // M3 Expressive shapes: generous corner radii
 val ExpressiveShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
@@ -120,6 +207,7 @@ fun UniversalInstallerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     amoledMode: Boolean = false,
+    themePreset: AppThemePreset = AppThemePreset.Orange,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -127,8 +215,9 @@ fun UniversalInstallerTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        else -> {
+            getPresetColorScheme(darkTheme, themePreset)
+        }
     }.let { baseScheme ->
         if (darkTheme && amoledMode) {
             baseScheme.copy(

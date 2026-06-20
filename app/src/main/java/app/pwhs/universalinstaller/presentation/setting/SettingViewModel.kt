@@ -15,6 +15,7 @@ import app.pwhs.core.data.local.dataStore
 import app.pwhs.core.data.local.SharedPrefsKeys
 import androidx.lifecycle.ViewModel
 import app.pwhs.core.domain.ThemeMode
+import app.pwhs.core.domain.AppThemePreset
 
 
 import androidx.lifecycle.viewModelScope
@@ -39,10 +40,18 @@ import rikka.shizuku.Shizuku
 import timber.log.Timber
 
 
+data class SettingThemeState(
+    val mode: ThemeMode = ThemeMode.System,
+    val dynamicColor: Boolean = false,
+    val amoledMode: Boolean = false,
+    val themePreset: AppThemePreset = AppThemePreset.Orange
+)
+
 object PreferencesKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
     val AMOLED_MODE = booleanPreferencesKey("amoled_mode")
+    val THEME_PRESET = stringPreferencesKey("theme_preset")
     val USE_SHIZUKU = booleanPreferencesKey("use_shizuku")
     val USE_ROOT = booleanPreferencesKey("use_root")
     val INSTALL_USER_ID = intPreferencesKey("install_user_id")
@@ -192,6 +201,7 @@ data class SettingUiState(
     val themeMode: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = false,
     val amoledMode: Boolean = false,
+    val themePreset: AppThemePreset = AppThemePreset.Orange,
     val useShizuku: Boolean = false,
     val useRoot: Boolean = false,
     val virusTotalApiKey: String = "",
@@ -304,6 +314,12 @@ class SettingViewModel(
     fun setAmoledMode(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.edit { prefs -> prefs[PreferencesKeys.AMOLED_MODE] = enabled }
+        }
+    }
+
+    fun setThemePreset(preset: AppThemePreset) {
+        viewModelScope.launch {
+            dataStore.edit { prefs -> prefs[PreferencesKeys.THEME_PRESET] = preset.name }
         }
     }
 
@@ -645,11 +661,14 @@ class SettingViewModel(
 
     val uiState: StateFlow<SettingUiState> = combine(
         dataStore.data.map { prefs ->
-            val name = prefs[PreferencesKeys.THEME_MODE] ?: ThemeMode.System.name
-            ThemeMode.entries.find { it.name == name } ?: ThemeMode.System
+            val modeName = prefs[PreferencesKeys.THEME_MODE] ?: ThemeMode.System.name
+            val mode = ThemeMode.entries.find { it.name == modeName } ?: ThemeMode.System
+            val dynamicColor = prefs[PreferencesKeys.DYNAMIC_COLOR] ?: false
+            val amoledMode = prefs[PreferencesKeys.AMOLED_MODE] ?: false
+            val presetName = prefs[PreferencesKeys.THEME_PRESET] ?: AppThemePreset.Orange.name
+            val preset = AppThemePreset.entries.find { it.name == presetName } ?: AppThemePreset.Orange
+            SettingThemeState(mode, dynamicColor, amoledMode, preset)
         },
-        dataStore.data.map { it[PreferencesKeys.DYNAMIC_COLOR] ?: false },
-        dataStore.data.map { it[PreferencesKeys.AMOLED_MODE] ?: false },
         dataStore.data.map { it[PreferencesKeys.USE_SHIZUKU] ?: false },
         dataStore.data.map { it[PreferencesKeys.VIRUSTOTAL_API_KEY] ?: "" },
         _shizukuState,
@@ -718,34 +737,32 @@ class SettingViewModel(
         _selectedLanguage,
         _isDefaultInstaller,
     ) { flows ->
-        val theme = flows[0] as ThemeMode
-        val dynamicColor = flows[1] as Boolean
-        val amoledMode = flows[2] as Boolean
-        val useShizuku = flows[3] as Boolean
-        val vtKey = flows[4] as String
-        val shizukuState = flows[5] as ShizukuState
-        val shizukuOpts = flows[6] as ShizukuOptions
-        val deleteApk = flows[7] as Boolean
-        val useRoot = flows[8] as Boolean
-        val rootState = flows[9] as RootState
-        val rootOpts = flows[10] as RootOptions
-        val syncOpts = flows[11] as SyncOptions
+        val themeState = flows[0] as SettingThemeState
+        val useShizuku = flows[1] as Boolean
+        val vtKey = flows[2] as String
+        val shizukuState = flows[3] as ShizukuState
+        val shizukuOpts = flows[4] as ShizukuOptions
+        val deleteApk = flows[5] as Boolean
+        val useRoot = flows[6] as Boolean
+        val rootState = flows[7] as RootState
+        val rootOpts = flows[8] as RootOptions
+        val syncOpts = flows[9] as SyncOptions
         @Suppress("UNCHECKED_CAST")
-        val biometricFlags = flows[12] as Pair<Boolean, Boolean>
+        val biometricFlags = flows[10] as Pair<Boolean, Boolean>
         @Suppress("UNCHECKED_CAST")
-        val interfaceFlags = flows[13] as List<Boolean>
+        val interfaceFlags = flows[11] as List<Boolean>
         val dialogMode = interfaceFlags[0]
         val autoOpen = interfaceFlags[1]
         val autoConfirm = interfaceFlags[2]
         val showDownload = interfaceFlags[3]
         @Suppress("UNCHECKED_CAST")
-        val extractorAndProfiles = flows[14] as List<String>
+        val extractorAndProfiles = flows[12] as List<String>
         val extractorPath = extractorAndProfiles[0]
         val extractorTemplate = extractorAndProfiles[1]
         val profilesJson = extractorAndProfiles[2]
         val mappingJson = extractorAndProfiles[3]
-        val selectedLang = flows[15] as String
-        val isDefault = flows[16] as Boolean
+        val selectedLang = flows[13] as String
+        val isDefault = flows[14] as Boolean
 
         val versionName = try {
             application.packageManager
@@ -756,9 +773,10 @@ class SettingViewModel(
         }
         SettingUiState(
             isLoading = false,
-            themeMode = theme,
-            dynamicColor = dynamicColor,
-            amoledMode = amoledMode,
+            themeMode = themeState.mode,
+            dynamicColor = themeState.dynamicColor,
+            amoledMode = themeState.amoledMode,
+            themePreset = themeState.themePreset,
             // Reflect the raw preference so the switch flips immediately when toggled.
             // Functional gating (do we actually invoke the Shizuku backend?) is enforced
             // separately at install time via shizukuAvailable / BackendSelfHeal.

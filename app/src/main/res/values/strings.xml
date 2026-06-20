@@ -504,6 +504,13 @@
     <string name="theme_dynamic_color_subtitle">Use system wallpaper colors for app accents (requires Android 12+)</string>
     <string name="theme_amoled_mode_title">AMOLED Black</string>
     <string name="theme_amoled_mode_subtitle">Use pitch black background in dark mode</string>
+    <string name="theme_preset_title">Color ThemePreset</string>
+    <string name="theme_preset_subtitle">Select a primary color scheme for app accents</string>
+    <string name="theme_preset_orange">Orange (Default)</string>
+    <string name="theme_preset_blue">Ocean Blue</string>
+    <string name="theme_preset_green">Forest Green</string>
+    <string name="theme_preset_red">Crimson Red</string>
+    <string name="theme_preset_purple">Lavender Purple</string>
     <string name="dialog_install_btn">Install</string>
     <string name="dialog_update_btn">Update</string>
     <string name="dialog_downgrade_btn">Downgrade</string>

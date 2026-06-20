@@ -17,6 +17,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import app.pwhs.core.domain.ThemeMode
 import app.pwhs.core.data.local.dataStore
 import app.pwhs.core.data.local.SharedPrefsKeys
+import app.pwhs.core.domain.AppThemePreset
 import app.pwhs.universalinstaller.ui.theme.UniversalInstallerTheme
 import app.pwhs.universalinstaller.util.LocaleHelper
 import kotlinx.coroutines.flow.first
@@ -28,7 +29,8 @@ abstract class BaseActivity : FragmentActivity() {
     protected data class AppThemeState(
         val mode: ThemeMode,
         val dynamicColor: Boolean,
-        val amoledMode: Boolean
+        val amoledMode: Boolean,
+        val themePreset: AppThemePreset
     )
 
     override fun attachBaseContext(newBase: Context) {
@@ -63,7 +65,9 @@ abstract class BaseActivity : FragmentActivity() {
                     val mode = ThemeMode.entries.find { it.name == name } ?: ThemeMode.System
                     val dynamicColor = prefs[booleanPreferencesKey("dynamic_color")] ?: false
                     val amoledMode = prefs[booleanPreferencesKey("amoled_mode")] ?: false
-                    AppThemeState(mode, dynamicColor, amoledMode)
+                    val presetName = prefs[stringPreferencesKey("theme_preset")] ?: AppThemePreset.Orange.name
+                    val themePreset = AppThemePreset.entries.find { it.name == presetName } ?: AppThemePreset.Orange
+                    AppThemeState(mode, dynamicColor, amoledMode, themePreset)
                 }
             }
             
@@ -73,7 +77,9 @@ abstract class BaseActivity : FragmentActivity() {
                     val mode = ThemeMode.entries.find { it.name == name } ?: ThemeMode.System
                     val dynamicColor = prefs[booleanPreferencesKey("dynamic_color")] ?: false
                     val amoledMode = prefs[booleanPreferencesKey("amoled_mode")] ?: false
-                    AppThemeState(mode, dynamicColor, amoledMode)
+                    val presetName = prefs[stringPreferencesKey("theme_preset")] ?: AppThemePreset.Orange.name
+                    val themePreset = AppThemePreset.entries.find { it.name == presetName } ?: AppThemePreset.Orange
+                    AppThemeState(mode, dynamicColor, amoledMode, themePreset)
                 }
             }
             val themeState by themeStateFlow.collectAsState(initial = initialState)
@@ -109,7 +115,8 @@ abstract class BaseActivity : FragmentActivity() {
             UniversalInstallerTheme(
                 darkTheme = darkTheme,
                 dynamicColor = themeState.dynamicColor,
-                amoledMode = themeState.amoledMode
+                amoledMode = themeState.amoledMode,
+                themePreset = themeState.themePreset
             ) {
                 content()
             }
