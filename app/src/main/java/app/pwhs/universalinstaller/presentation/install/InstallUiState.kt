@@ -131,4 +131,5 @@ data class InstallUiState(
     val selectedProfileId: String? = null,
     val allUsers: Boolean = false,
     val selectedUserId: Int? = null,
+    val isApk: Boolean = false,
 )

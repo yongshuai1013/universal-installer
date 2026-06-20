@@ -105,6 +105,7 @@ fun InstallScreen(
                 title = resource.getString(R.string.biometric_install_title),
                 subtitle = resource.getString(R.string.biometric_install_sub),
                 onSuccess = viewModel::confirmInstall,
+                onCancel = viewModel::dismissPendingInstall,
             )
         } else {
             viewModel.confirmInstall()
@@ -118,8 +119,23 @@ fun InstallScreen(
                 pendingRisks = emptyList()
                 proceedWithBiometric()
             },
-            onCancel = { pendingRisks = emptyList() },
+            onCancel = {
+                pendingRisks = emptyList()
+                viewModel.dismissPendingInstall()
+            },
         )
+    }
+
+    LaunchedEffect(uiState.pendingApkInfo) {
+        val info = uiState.pendingApkInfo
+        if (info != null) {
+            val risks = app.pwhs.universalinstaller.presentation.install.dialog.detectInstallRisks(info)
+            if (risks.isNotEmpty()) {
+                pendingRisks = risks
+            } else {
+                proceedWithBiometric()
+            }
+        }
     }
 
     InstallUi(
@@ -408,35 +424,7 @@ private fun InstallUi(
         onDeleteMany = onDeleteScannedFiles,
     )
 
-    // APK Info Preview Bottom Sheet
-    if (uiState.pendingApkInfo != null) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = onDismissPreview,
-            sheetState = sheetState,
-            shape = MaterialTheme.shapes.extraLarge,
-        ) {
-            ApkInfoContent(
-                apkInfo = uiState.pendingApkInfo,
-                onInstall = onConfirmInstall,
-                onCancel = onDismissPreview,
-                onCheckVirusTotal = onCheckVirusTotal,
-                attachedObbFiles = uiState.attachedObbFiles,
-                onAttachObb = { obbPickerLauncher.launch(arrayOf("*/*")) },
-                onRemoveObb = onRemoveObb,
-                onToggleSplit = onToggleSplit,
-                profiles = uiState.installerProfiles,
-                appProfileMapping = uiState.appProfileMapping,
-                allUsers = uiState.allUsers,
-                selectedUserId = uiState.selectedUserId,
-                onProfileSelected = onProfileSelected,
-                onMappingChanged = onMappingChanged,
-                onToggleAllUsers = onToggleAllUsers,
-                onSelectUserId = onSelectUserId,
-                startCompact = true,
-            )
-        }
-    }
+    // APK Info Preview Bottom Sheet is bypassed and auto-installed
 
     BatchInstallSheet(
         state = uiState.batchState,
@@ -529,7 +517,7 @@ private fun InstallUi(
                     onTabChange = { selectedTab = it },
                     showDownloadTab = showDownloadTab,
                     isParsing = uiState.isLoading,
-                    onSkipParse = onSkipParseSingle,
+                    onSkipParse = if (uiState.isApk) onSkipParseSingle else null,
                     downloadState = uiState.downloadState,
                     onFindAutomatic = onStartDeviceScan,
                     onBrowsePackages = {

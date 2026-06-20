@@ -179,6 +179,11 @@ class DialogInstallActivity : ComponentActivity() {
             val uiState by viewModel.uiState.collectAsState()
             val resource = LocalResources.current
             val context = LocalContext.current
+            val isApk = remember(incomingUri) {
+                val displayName = context.contentResolver.getDisplayName(incomingUri)
+                val ext = displayName.substringAfterLast('.', "").lowercase()
+                ext == "apk"
+            }
 
             val obbPickerLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.OpenMultipleDocuments()
@@ -200,12 +205,6 @@ class DialogInstallActivity : ComponentActivity() {
                 }
             }
 
-            // Transition from Loading → Prepare when parse completes
-            LaunchedEffect(uiState.pendingApkInfo, uiState.dialogStage) {
-                if (uiState.pendingApkInfo != null && uiState.dialogStage == DialogStage.Loading) {
-                    viewModel.dialogShowPrepare()
-                }
-            }
 
             // Dialog target snapshot — set inside confirmInstall before the install fires.
             // We watch this + the session list to drive Installing → Success/Failed transitions.
@@ -263,6 +262,20 @@ class DialogInstallActivity : ComponentActivity() {
                     pendingRisks = risks
                 } else {
                     proceedInstall()
+                }
+            }
+
+            // Transition from Loading → Installing (or Risk confirm) when parse completes
+            LaunchedEffect(uiState.pendingApkInfo, uiState.dialogStage) {
+                val info = uiState.pendingApkInfo
+                if (info != null && uiState.dialogStage == DialogStage.Loading) {
+                    val risks = detectInstallRisks(info)
+                    if (risks.isNotEmpty()) {
+                        viewModel.dialogShowPrepare()
+                        pendingRisks = risks
+                    } else {
+                        proceedInstall()
+                    }
                 }
             }
 
@@ -336,7 +349,14 @@ class DialogInstallActivity : ComponentActivity() {
                             pendingRisks = emptyList()
                             proceedInstall()
                         },
-                        onCancel = { pendingRisks = emptyList() },
+                        onCancel = {
+                            pendingRisks = emptyList()
+                            handoffInstall()
+                            viewModel.dismissPendingInstall()
+                            viewModel.dialogClose()
+                            viewModel.clearDialogTarget()
+                            finish()
+                        },
                     )
                 }
 
@@ -409,7 +429,9 @@ class DialogInstallActivity : ComponentActivity() {
                             },
                             onToggleAllUsers = viewModel::setAllUsers,
                             onSelectUserId = { viewModel.setUserId(it) },
-                            onSkipParse = { viewModel.skipParseAndInstallSingle() },
+                            onSkipParse = if (isApk) {
+                                { viewModel.skipParseAndInstallSingle() }
+                            } else null,
                         )
 
                         PositionDialog(

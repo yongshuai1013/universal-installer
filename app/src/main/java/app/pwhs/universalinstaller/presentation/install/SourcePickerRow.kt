@@ -64,7 +64,7 @@ internal fun SourcePicker(
     onTabChange: (SourceTab) -> Unit,
     isParsing: Boolean,
     downloadState: DownloadState,
-    onSkipParse: () -> Unit,
+    onSkipParse: (() -> Unit)?,
     onFindAutomatic: () -> Unit,
     onBrowsePackages: () -> Unit,
     onBrowseAll: () -> Unit,
@@ -178,7 +178,7 @@ private fun SourceTabPill(
 @Composable
 private fun LocalSourceContent(
     isParsing: Boolean,
-    onSkipParse: () -> Unit,
+    onSkipParse: (() -> Unit)?,
     onFindAutomatic: () -> Unit,
     onBrowsePackages: () -> Unit,
     onBrowseAll: () -> Unit,
@@ -212,8 +212,10 @@ private fun LocalSourceContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                androidx.compose.material3.TextButton(onClick = onSkipParse) {
-                    Text(stringResource(R.string.dialog_menu_skip_analysis, "Skip & Install"))
+                if (onSkipParse != null) {
+                    androidx.compose.material3.TextButton(onClick = onSkipParse) {
+                        Text(stringResource(R.string.dialog_menu_skip_analysis, "Skip & Install"))
+                    }
                 }
             }
         }

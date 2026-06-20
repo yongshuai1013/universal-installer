@@ -90,6 +90,7 @@ class InstallViewModel(
     )
 
     private val _isLoading = MutableStateFlow(false)
+    private val _isApk = MutableStateFlow(false)
     private val _pendingApkInfo = MutableStateFlow<ApkInfo?>(null)
     private val _downloadState = MutableStateFlow<DownloadState>(DownloadState.Idle)
     private val _scanState = MutableStateFlow<ScanState>(ScanState.Idle)
@@ -185,6 +186,7 @@ class InstallViewModel(
         _selectedProfileId,
         application.dataStore.data.map { it[PreferencesKeys.SHIZUKU_ALL_USERS] ?: false },
         application.dataStore.data.map { it[PreferencesKeys.INSTALL_USER_ID] },
+        _isApk,
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         InstallUiState(
@@ -205,6 +207,7 @@ class InstallViewModel(
             selectedProfileId = flows[14] as String?,
             allUsers = flows[15] as Boolean,
             selectedUserId = flows[16] as Int?,
+            isApk = flows[17] as Boolean,
         )
     }
         .onStart { activeController().restoreSessionsFromSavedState(viewModelScope) }
@@ -302,6 +305,7 @@ class InstallViewModel(
         parseJob?.cancel()
         parseJob = viewModelScope.launch {
             _isLoading.value = true
+            _isApk.value = fileName.substringAfterLast('.', "").lowercase() == "apk"
             pendingFileName = fileName
             pendingOriginalUri = uri
             val info = withContext(Dispatchers.IO) {
@@ -1060,6 +1064,7 @@ class InstallViewModel(
         pendingFileName = null
         pendingObbEntries = emptyList()
         _attachedObbFiles.value = emptyList()
+        _isApk.value = false
     }
 
     /**
