@@ -92,6 +92,11 @@ import ru.solrudev.ackpine.splits.ApkSplits.validate
 import ru.solrudev.ackpine.splits.SplitPackage.Companion.toSplitPackage
 import ru.solrudev.ackpine.splits.ZippedApkSplits
 import timber.log.Timber
+import app.pwhs.core.domain.ThemeMode
+import app.pwhs.core.domain.AppThemePreset
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.compose.foundation.isSystemInDarkTheme
 
 /**
  * Translucent activity that shows a focused install dialog when an external app (file
@@ -298,7 +303,25 @@ class DialogInstallActivity : ComponentActivity() {
                 finish()
             }
 
-            UniversalInstallerTheme {
+            val themeModeName = prefs?.get(stringPreferencesKey("theme_mode")) ?: ThemeMode.System.name
+            val themeMode = ThemeMode.entries.find { it.name == themeModeName } ?: ThemeMode.System
+            val dynamicColor = prefs?.get(booleanPreferencesKey("dynamic_color")) ?: false
+            val amoledMode = prefs?.get(booleanPreferencesKey("amoled_mode")) ?: false
+            val presetName = prefs?.get(stringPreferencesKey("theme_preset")) ?: AppThemePreset.Orange.name
+            val themePreset = AppThemePreset.entries.find { it.name == presetName } ?: AppThemePreset.Orange
+
+            val darkTheme = when (themeMode) {
+                ThemeMode.System -> isSystemInDarkTheme()
+                ThemeMode.Light -> false
+                ThemeMode.Dark -> true
+            }
+
+            UniversalInstallerTheme(
+                darkTheme = darkTheme,
+                dynamicColor = dynamicColor,
+                amoledMode = amoledMode,
+                themePreset = themePreset
+            ) {
                 val configuration = LocalConfiguration.current
                 val screenHeight = configuration.screenHeightDp.dp
                 val maxDialogHeight = screenHeight * 0.8f
