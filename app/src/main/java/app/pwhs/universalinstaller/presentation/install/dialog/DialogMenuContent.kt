@@ -9,6 +9,7 @@ import android.os.UserManager
 import android.text.format.Formatter
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.semantics.Role
@@ -359,14 +360,22 @@ fun DialogMenuContent(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(stringResource(R.string.dialog_back_btn))
+                Text(
+                    text = stringResource(R.string.dialog_back_btn),
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
+                )
             }
 
             Button(
                 onClick = onInstall,
                 modifier = Modifier.weight(1f),
             ) {
-                Text(stringResource(R.string.dialog_install_btn))
+                Text(
+                    text = stringResource(R.string.dialog_install_btn),
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
+                )
             }
         }
         

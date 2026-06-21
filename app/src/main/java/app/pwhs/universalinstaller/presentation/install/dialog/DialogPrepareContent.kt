@@ -205,7 +205,11 @@ fun DialogPrepareContent(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(stringResource(R.string.dialog_menu_btn))
+                Text(
+                    text = stringResource(R.string.dialog_menu_btn),
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
+                )
             }
 
             // Install/Update/Downgrade button
@@ -227,6 +231,8 @@ fun DialogPrepareContent(
                         isUpdate -> stringResource(R.string.dialog_update_btn)
                         else -> stringResource(R.string.dialog_install_btn)
                     },
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
                 )
             }
         }
