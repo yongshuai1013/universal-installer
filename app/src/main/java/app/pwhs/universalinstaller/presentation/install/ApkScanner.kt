@@ -107,6 +107,8 @@ object ApkScanner {
      */
     private fun collectVolumeRoots(context: Context): List<File> {
         val out = LinkedHashSet<File>()
+        
+        // 1. StorageManager API (API 24+)
         val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
         if (sm != null) {
             for (vol in sm.storageVolumes) {
@@ -120,6 +122,19 @@ object ApkScanner {
                 if (dir != null && dir.exists() && dir.canRead()) out.add(dir)
             }
         }
+        
+        // 2. ContextCompat API to catch all external volumes (e.g. SD cards on older APIs)
+        val externalDirs = ContextCompat.getExternalFilesDirs(context, null)
+        for (dir in externalDirs) {
+            if (dir != null) {
+                val rootPath = dir.absolutePath.substringBefore("/Android/data/")
+                val rootDir = File(rootPath)
+                if (rootDir.exists() && rootDir.canRead()) {
+                    out.add(rootDir)
+                }
+            }
+        }
+
         if (out.isEmpty()) {
             Environment.getExternalStorageDirectory()
                 ?.takeIf { it.exists() && it.canRead() }

@@ -109,6 +109,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -1199,6 +1201,11 @@ private fun AppCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
+            .semantics {
+                if (isSelectionMode) {
+                    selected = isSelected
+                }
+            }
             .combinedClickable(
                 onClick = {
                     if (isSelectionMode) onToggleSelect() else onShowActions()
