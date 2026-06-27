@@ -457,6 +457,11 @@
     <string name="installer_mode_root" translatable="false">Root</string>
     <string name="installer_mode_package_installer">Package Installer</string>
     <string name="installer_mode_using">Using %s</string>
+    <string name="installer_engine_dialog_title">Install engine</string>
+    <string name="installer_engine_default_desc">Standard Android package installer</string>
+    <string name="installer_engine_shizuku_desc">Install silently via the Shizuku service</string>
+    <string name="installer_engine_root_desc">Install with root (su)</string>
+    <string name="installer_engine_root_unsupported">Not available on this build</string>
     <string name="setting_section_root_options">Root Options</string>
     <string name="setting_root_replace">Replace existing</string>
     <string name="setting_root_replace_sub">Replace already installed packages</string>
