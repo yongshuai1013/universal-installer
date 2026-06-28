@@ -127,11 +127,15 @@ fun InstallerModeBadge(modifier: Modifier = Modifier) {
         // Shizuku is disabled only when it genuinely can't run here (not installed /
         // unsupported); NOT_RUNNING / NO_PERMISSION stay tappable since picking them kicks
         // off the start/permission flow, same as Settings.
-        // Treat Root as "ready" (not dimmed) when it's the active engine too — a fresh
-        // SettingViewModel probes su as UNKNOWN (libsu only confirms READY after a shell
-        // attempt), so keying purely off rootState == READY left Root greyed even after the
-        // user had granted it and was actively using it.
+        // Only DIM Root when we positively know it's unusable (NOT_ROOTED / UNAVAILABLE).
+        // UNKNOWN must NOT dim: a fresh SettingViewModel probes su as UNKNOWN (libsu confirms
+        // READY only after a shell attempt), so a granted device shows UNKNOWN here and was
+        // being greyed even though root works.
         val rootReady = settingState.rootState == RootState.READY || current == InstallMode.ROOT
+        val rootDimmed = current != InstallMode.ROOT && (
+            settingState.rootState == RootState.NOT_ROOTED ||
+            settingState.rootState == RootState.UNAVAILABLE
+        )
         val shizukuSelectable = settingState.shizukuState != ShizukuState.UNSUPPORTED &&
             settingState.shizukuState != ShizukuState.NOT_INSTALLED
         AlertDialog(
@@ -175,7 +179,7 @@ fun InstallerModeBadge(modifier: Modifier = Modifier) {
                         // Clickable as long as the build supports root, even when su isn't
                         // ready — the tap triggers the root request.
                         enabled = settingState.rootSupported,
-                        dimmed = !rootReady,
+                        dimmed = rootDimmed,
                         onClick = {
                             settingViewModel.setInstallMode(InstallMode.ROOT)
                             showPicker = false
