@@ -858,21 +858,18 @@ private fun InstallModeSelector(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
         )
-        // Root button stays in the row when libsu shipped (full flavor) but goes disabled
-        // when the device has no su binary or libsu is on a different policy — tapping it
-        // would just bounce back to the previous selection, which is confusing. Dim it
-        // instead. DENIED/UNKNOWN remain tappable because the retry path can still resolve
-        // them.
-        val rootSelectable = rootState == RootState.READY ||
-            rootState == RootState.DENIED ||
-            rootState == RootState.UNKNOWN
+        // Root stays tappable whenever libsu shipped (it's only in the row then) — tapping it
+        // when su isn't ready fires the root request. We only DIM it (greyed label) to show
+        // it isn't the ready engine, rather than disabling the click.
+        val rootDimmed = rootState != RootState.READY
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, mode ->
+                val dim = mode == InstallMode.ROOT && rootDimmed
                 SegmentedButton(
                     selected = mode == currentMode,
                     onClick = { if (mode != currentMode) onModeChange(mode) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                    enabled = mode != InstallMode.ROOT || rootSelectable,
+                    enabled = true,
                     label = {
                         Text(
                             text = when (mode) {
@@ -880,6 +877,10 @@ private fun InstallModeSelector(
                                 InstallMode.SHIZUKU -> stringResource(R.string.setting_install_mode_shizuku)
                                 InstallMode.ROOT -> stringResource(R.string.setting_install_mode_root)
                             },
+                            color = if (dim)
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            else
+                                androidx.compose.ui.graphics.Color.Unspecified,
                         )
                     },
                 )
