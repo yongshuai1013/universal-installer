@@ -121,17 +121,13 @@ fun InstallerModeBadge(modifier: Modifier = Modifier) {
             useShizuku = mode == Mode.Shizuku,
             useRoot = mode == Mode.Root,
         )
-        // Mirror the Settings screen's enable/disable logic so unusable engines are dimmed:
-        //  • Root is selectable only when libsu shipped AND su is reachable (READY) or still
-        //    resolvable (DENIED/UNKNOWN). UNAVAILABLE/not-rooted → disabled.
-        //  • Shizuku is disabled only when it genuinely can't run here (not installed /
-        //    unsupported); NOT_RUNNING / NO_PERMISSION stay tappable since picking them kicks
-        //    off the start/permission flow, same as Settings.
-        val rootSelectable = settingState.rootSupported && (
-            settingState.rootState == RootState.READY ||
-            settingState.rootState == RootState.DENIED ||
-            settingState.rootState == RootState.UNKNOWN
-        )
+        // Root stays tappable whenever this build ships su support — tapping it when not yet
+        // ready fires the root request (su prompt). It's only greyed (dimmed) to signal it
+        // isn't the active/ready engine. On builds with no root support it's fully disabled.
+        // Shizuku is disabled only when it genuinely can't run here (not installed /
+        // unsupported); NOT_RUNNING / NO_PERMISSION stay tappable since picking them kicks
+        // off the start/permission flow, same as Settings.
+        val rootReady = settingState.rootState == RootState.READY
         val shizukuSelectable = settingState.shizukuState != ShizukuState.UNSUPPORTED &&
             settingState.shizukuState != ShizukuState.NOT_INSTALLED
         AlertDialog(
@@ -165,12 +161,17 @@ fun InstallerModeBadge(modifier: Modifier = Modifier) {
                     )
                     EngineOption(
                         title = stringResource(R.string.installer_mode_root),
-                        subtitle = if (rootSelectable)
-                            stringResource(R.string.installer_engine_root_desc)
-                        else
-                            stringResource(R.string.installer_engine_root_unsupported),
+                        subtitle = when {
+                            !settingState.rootSupported ->
+                                stringResource(R.string.installer_engine_root_unsupported)
+                            rootReady -> stringResource(R.string.installer_engine_root_desc)
+                            else -> stringResource(R.string.installer_engine_root_request)
+                        },
                         selected = current == InstallMode.ROOT,
-                        enabled = rootSelectable,
+                        // Clickable as long as the build supports root, even when su isn't
+                        // ready — the tap triggers the root request.
+                        enabled = settingState.rootSupported,
+                        dimmed = !rootReady,
                         onClick = {
                             settingViewModel.setInstallMode(InstallMode.ROOT)
                             showPicker = false
@@ -194,6 +195,9 @@ private fun EngineOption(
     selected: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    // Greyed-out look without blocking the click — used for engines that aren't ready yet
+    // but can still be tapped to start their permission/request flow (e.g. Root).
+    dimmed: Boolean = false,
 ) {
     Row(
         modifier = Modifier
@@ -203,7 +207,7 @@ private fun EngineOption(
     ) {
         RadioButton(selected = selected, onClick = onClick, enabled = enabled)
         Column(modifier = Modifier.padding(start = 8.dp)) {
-            val titleColor = if (enabled) MaterialTheme.colorScheme.onSurface
+            val titleColor = if (enabled && !dimmed) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             Text(text = title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
             Text(

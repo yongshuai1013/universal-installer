@@ -461,6 +461,7 @@
     <string name="installer_engine_default_desc">Standard Android package installer</string>
     <string name="installer_engine_shizuku_desc">Install silently via the Shizuku service</string>
     <string name="installer_engine_root_desc">Install with root (su)</string>
+    <string name="installer_engine_root_request">Tap to grant root access</string>
     <string name="installer_engine_root_unsupported">Not available on this build</string>
     <string name="setting_section_root_options">Root Options</string>
     <string name="setting_root_replace">Replace existing</string>
