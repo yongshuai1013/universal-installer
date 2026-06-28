@@ -45,7 +45,7 @@ abstract class BaseInstallController(
         packageName: String,
     ): ProgressSession<InstallFailure>
 
-    fun install(
+    open fun install(
         uris: List<Uri>,
         sessionData: SessionData,
         scope: CoroutineScope,
@@ -188,6 +188,23 @@ abstract class BaseInstallController(
             )
         } catch (e: Exception) {
             Timber.e(e, "Failed to save install history")
+        }
+    }
+
+    /** Delete an OpenDocument-picked source file. Shared with controllers that bypass the
+     *  ackpine session path (e.g. the root shell installer) and so don't go through the
+     *  per-session deleteFlags map. */
+    protected fun deleteSourceDocument(context: Context, uri: Uri) {
+        try {
+            context.contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        } catch (_: Exception) { /* permission may already be held or not available */ }
+        try {
+            DocumentsContract.deleteDocument(context.contentResolver, uri)
+            Timber.d("Deleted source file: $uri")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to delete source file: $uri")
         }
     }
 

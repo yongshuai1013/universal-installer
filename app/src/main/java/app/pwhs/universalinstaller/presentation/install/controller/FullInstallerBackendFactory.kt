@@ -39,28 +39,16 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
      *   - false → DENIED (manager said no)
      */
     override suspend fun probeRootState(): RootState = withContext(Dispatchers.IO) {
-        val suPaths = arrayOf(
-            "/system/app/Superuser.apk",
-            "/sbin/su",
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/data/local/xbin/su",
-            "/data/local/bin/su",
-            "/system/sd/xbin/su",
-            "/system/bin/failsafe/su",
-            "/data/local/su",
-            "/su/bin/su"
-        )
-        val hasSu = suPaths.any { java.io.File(it).exists() }
-        if (!hasSu) {
-            return@withContext RootState.NOT_ROOTED
-        }
-
+        // Don't gate on a hardcoded su-binary path list — modern Magisk/KernelSU don't expose
+        // `su` at any of the classic paths, so that heuristic falsely reported NOT_ROOTED on
+        // rooted devices and made the whole app skip the Root backend (issue #82). Ask libsu
+        // directly: it returns true (granted) / false (denied) / null (not asked yet → UNKNOWN,
+        // which the caller resolves with a real requestRoot() shell attempt).
         try {
             when (Shell.isAppGrantedRoot()) {
-                null -> RootState.UNKNOWN
                 true -> RootState.READY
                 false -> RootState.DENIED
+                null -> RootState.UNKNOWN
             }
         } catch (t: Throwable) {
             Timber.w(t, "probeRootState failed")
@@ -176,7 +164,7 @@ class FullInstallerBackendFactory : InstallerBackendFactory {
         uris: List<android.net.Uri>,
         userId: Int,
         onProgress: (Float) -> Unit,
-    ): Result<Unit> = RootTargetedInstaller.install(context, uris, userId, onProgress)
+    ): Result<Unit> = RootTargetedInstaller.install(context, uris, userId, onProgress = onProgress)
 
     override suspend fun installTargeted(
         context: android.content.Context,

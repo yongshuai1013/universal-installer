@@ -2,8 +2,14 @@ package app.pwhs.universalinstaller.presentation.install.controller
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import app.pwhs.core.data.local.dataStore
+import app.pwhs.universalinstaller.presentation.install.dialog.InstallerOverrides
+import app.pwhs.universalinstaller.presentation.setting.DEFAULT_INSTALLER_PACKAGE_NAME
+import app.pwhs.universalinstaller.presentation.setting.PreferencesKeys
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -19,13 +25,20 @@ import java.util.UUID
  */
 object RootTargetedInstaller {
 
+    /**
+     * @param userId target user id, or a negative value to omit `--user` (install for the
+     *   default/all-users scope — used for the normal current-user install).
+     * @param packageName the app being installed, for per-app installer-source overrides.
+     */
     suspend fun install(
         context: Context,
         uris: List<Uri>,
         userId: Int,
+        packageName: String = "",
         onProgress: (Float) -> Unit = {},
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            val createArgs = buildCreateArgs(context, packageName)
             // Stage each input URI into the app's cache dir under a chmod-readable file so
             // the root shell can read it without SELinux drama on content:// URIs.
             val stagingDir = File(context.cacheDir, "root_install_${UUID.randomUUID()}").apply {
@@ -51,7 +64,7 @@ object RootTargetedInstaller {
             }
 
             try {
-                val sessionId = createSession(userId)
+                val sessionId = createSession(userId, createArgs)
                 onProgress(0.1f)
 
                 stagedFiles.forEachIndexed { idx, file ->
@@ -67,9 +80,39 @@ object RootTargetedInstaller {
         }
     }
 
-    private fun createSession(userId: Int): String {
-        // `pm install-create --user <id> -r` → prints "Success: created install session [<id>]"
-        val result = Shell.cmd("pm install-create --user $userId -r").exec()
+    /**
+     * Build the `pm install-create` flags from the Root install prefs so the shell path
+     * honours the same options as the UI/profiles (replace, downgrade, test, grant-all,
+     * bypass-low-target-sdk, installer source) instead of only `-r`.
+     */
+    private suspend fun buildCreateArgs(context: Context, packageName: String): List<String> {
+        val prefs = runCatching { context.dataStore.data.first() }.getOrNull()
+        val args = mutableListOf<String>()
+        if (prefs?.get(PreferencesKeys.ROOT_REPLACE_EXISTING) != false) args += "-r" // default ON
+        if (prefs?.get(PreferencesKeys.ROOT_REQUEST_DOWNGRADE) == true) args += "-d"
+        if (prefs?.get(PreferencesKeys.ROOT_ALLOW_TEST) == true) args += "-t"
+        if (prefs?.get(PreferencesKeys.ROOT_GRANT_ALL_PERMISSIONS) == true) args += "-g"
+        // --bypass-low-target-sdk-block only exists on Android 14+; older pm rejects it.
+        if (prefs?.get(PreferencesKeys.ROOT_BYPASS_LOW_TARGET_SDK) == true &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+        ) args += "--bypass-low-target-sdk-block"
+        if (prefs?.get(PreferencesKeys.ROOT_SET_INSTALL_SOURCE) == true) {
+            val override = if (packageName.isNotBlank()) {
+                InstallerOverrides.get(prefs[PreferencesKeys.INSTALLER_OVERRIDES], packageName)
+            } else null
+            val installer = override
+                ?: prefs[PreferencesKeys.ROOT_INSTALLER_PACKAGE_NAME]?.trim()?.ifBlank { DEFAULT_INSTALLER_PACKAGE_NAME }
+                ?: DEFAULT_INSTALLER_PACKAGE_NAME
+            if (installer.isNotBlank()) args += "-i $installer"
+        }
+        return args
+    }
+
+    private fun createSession(userId: Int, createArgs: List<String>): String {
+        // `pm install-create [--user <id>] <flags>` → "Success: created install session [<id>]"
+        val userArg = if (userId >= 0) "--user $userId " else ""
+        val flags = createArgs.joinToString(" ")
+        val result = Shell.cmd("pm install-create $userArg$flags".trim()).exec()
         if (!result.isSuccess) {
             throw RuntimeException("pm install-create failed: ${joinErr(result)}")
         }
