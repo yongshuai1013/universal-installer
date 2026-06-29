@@ -66,6 +66,10 @@ internal fun HistoryCard(
     val canExpand = !entry.success && !entry.errorMessage.isNullOrBlank()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    
+    val launchIntent = remember(entry.packageName) {
+        if (entry.success) context.packageManager.getLaunchIntentForPackage(entry.packageName) else null
+    }
 
     Card(
         modifier = modifier
@@ -73,11 +77,10 @@ internal fun HistoryCard(
             .animateContentSize()
             .clip(MaterialTheme.shapes.large)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .clickable(enabled = if (entry.success) true else canExpand) {
+            .clickable(enabled = if (entry.success) launchIntent != null else canExpand) {
                 if (entry.success) {
-                    val intent = context.packageManager.getLaunchIntentForPackage(entry.packageName)
-                    if (intent != null) {
-                        context.startActivity(intent)
+                    if (launchIntent != null) {
+                        context.startActivity(launchIntent)
                     } else {
                         Toast.makeText(context, "Cannot open app", Toast.LENGTH_SHORT).show()
                     }
@@ -152,15 +155,10 @@ internal fun HistoryCard(
                 }
 
                 // Status badge / Open button
-                if (entry.success) {
+                if (entry.success && launchIntent != null) {
                     IconButton(
                         onClick = {
-                            val intent = context.packageManager.getLaunchIntentForPackage(entry.packageName)
-                            if (intent != null) {
-                                context.startActivity(intent)
-                            } else {
-                                Toast.makeText(context, "Cannot open app", Toast.LENGTH_SHORT).show()
-                            }
+                            context.startActivity(launchIntent)
                         },
                         modifier = Modifier.size(36.dp)
                     ) {
