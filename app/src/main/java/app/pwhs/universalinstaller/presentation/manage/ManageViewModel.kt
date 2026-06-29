@@ -138,6 +138,7 @@ data class ManageUiState(
     val filteredApps: List<InstalledApp> = emptyList(),
     val searchQuery: String = "",
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val appFilter: Set<AppFilter> = setOf(AppFilter.User),
     val selectedPackages: Set<String> = emptySet(),
     val isSelectionMode: Boolean = false,
@@ -166,6 +167,7 @@ class ManageViewModel(
     private val _apps = MutableStateFlow<List<InstalledApp>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
     private val _isLoading = MutableStateFlow(true)
+    private val _isRefreshing = MutableStateFlow(false)
     private val _appFilter = MutableStateFlow(setOf(AppFilter.User))
     private val _selectedPackages = MutableStateFlow<Set<String>>(emptySet())
     private val _sortBy = MutableStateFlow(UninstallSortBy.Name)
@@ -183,7 +185,7 @@ class ManageViewModel(
     val uiState: StateFlow<ManageUiState> = combine(
         listOf(_apps, _searchQuery, _isLoading, _appFilter, _selectedPackages,
             _sortBy, _sortDirection, _usageAccess, _systemAppPrompt, _extractState,
-            _privilegedReady, _privilegedActionResult, _groupBy, _batchExtractState)
+            _privilegedReady, _privilegedActionResult, _groupBy, _batchExtractState, _isRefreshing)
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val apps = flows[0] as List<InstalledApp>
@@ -202,6 +204,7 @@ class ManageViewModel(
         val privResult = flows[11] as PrivilegedActionResult?
         val groupBy = flows[12] as GroupBy
         val batchExtract = flows[13] as BatchExtractState
+        val refreshing = flows[14] as Boolean
         val filtered = apps
             .filter { app ->
                 val typeFilters = appFilter.filter { it == AppFilter.User || it == AppFilter.System }
@@ -230,6 +233,7 @@ class ManageViewModel(
             filteredApps = filtered,
             searchQuery = query,
             isLoading = loading,
+            isRefreshing = refreshing,
             appFilter = appFilter,
             selectedPackages = selected,
             isSelectionMode = selected.isNotEmpty(),
@@ -1183,12 +1187,16 @@ class ManageViewModel(
     }
 
     fun refreshApps() {
-        loadInstalledApps()
+        loadInstalledApps(isRefresh = true)
     }
 
-    private fun loadInstalledApps() {
+    private fun loadInstalledApps(isRefresh: Boolean = false) {
         viewModelScope.launch {
-            _isLoading.value = true
+            if (isRefresh) {
+                _isRefreshing.value = true
+            } else {
+                _isLoading.value = true
+            }
             val apps = withContext(Dispatchers.IO) {
                 val pm = application.packageManager
                 val installedInfos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -1248,6 +1256,7 @@ class ManageViewModel(
             }
             _apps.value = apps
             _isLoading.value = false
+            _isRefreshing.value = false
         }
     }
 

@@ -90,6 +90,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -960,15 +961,19 @@ private fun UninstallUi(
                         }
                     }
                     val sideloadLabel = stringResource(R.string.manage_group_other)
-                    LazyColumn(
-                        state = listState,
-                        // Extra bottom space so the FAB doesn't overlap the last card's
-                        // Uninstall button — 56dp FAB + 16dp inset + breathing room.
-                        contentPadding = PaddingValues(
-                            start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp,
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    PullToRefreshBox(
+                        isRefreshing = uiState.isRefreshing,
+                        onRefresh = onRefresh,
                     ) {
+                        LazyColumn(
+                            state = listState,
+                            // Extra bottom space so the FAB doesn't overlap the last card's
+                            // Uninstall button — 56dp FAB + 16dp inset + breathing room.
+                            contentPadding = PaddingValues(
+                                start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                         if (uiState.groupBy == GroupBy.Installer) {
                             // Group-by-installer view. We compute the bucket label per app
                             // (known store → display name; everything else → sideload), then
@@ -1018,6 +1023,7 @@ private fun UninstallUi(
                         item {
                             Spacer(Modifier.height(8.dp))
                         }
+                    }
                     }
                 }
             }
