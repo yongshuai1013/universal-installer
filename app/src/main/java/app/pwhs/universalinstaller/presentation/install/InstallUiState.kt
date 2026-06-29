@@ -121,6 +121,7 @@ data class InstallUiState(
     val obbCopyState: ObbCopyState = ObbCopyState.Idle,
     val attachedObbFiles: List<AttachedObb> = emptyList(),
     val batchState: BatchInstallState = BatchInstallState.Idle,
+    val batchDetailUri: android.net.Uri? = null,
     /** Current stage of the dialog install flow. */
     val dialogStage: DialogStage = DialogStage.None,
     /** Whether to merge split APKs from multiple files into a single session. */

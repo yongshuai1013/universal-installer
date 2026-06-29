@@ -79,6 +79,7 @@ internal fun BatchInstallSheet(
     onToggleMerge: (Boolean) -> Unit,
     onConfirm: () -> Unit,
     onSkipParse: () -> Unit,
+    onDetail: (Uri) -> Unit = {},
 ) {
     if (state is BatchInstallState.Idle) return
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -100,6 +101,7 @@ internal fun BatchInstallSheet(
                 onToggleAll = onToggleAll,
                 onToggleMerge = onToggleMerge,
                 onConfirm = onConfirm,
+                onDetail = onDetail,
             )
             BatchInstallState.Idle -> Unit
         }
@@ -149,6 +151,7 @@ private fun ReadyBody(
     onToggleAll: (Boolean) -> Unit,
     onToggleMerge: (Boolean) -> Unit,
     onConfirm: () -> Unit,
+    onDetail: (android.net.Uri) -> Unit,
 ) {
     val context = LocalContext.current
     val selectable = state.entries.count { it.parseError == null }
@@ -321,6 +324,7 @@ private fun ReadyBody(
                 EntryRow(
                     entry = entry,
                     onToggle = { onToggleEntry(entry.uri) },
+                    onDetail = { onDetail(entry.uri) }
                 )
             }
         }
@@ -374,6 +378,7 @@ private fun ReadyBody(
 private fun EntryRow(
     entry: BatchApkEntry,
     onToggle: () -> Unit,
+    onDetail: () -> Unit,
 ) {
     val context = LocalContext.current
     val failed = entry.parseError != null
@@ -486,6 +491,17 @@ private fun EntryRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            
+            if (!failed) {
+                Spacer(Modifier.width(8.dp))
+                androidx.compose.material3.IconButton(onClick = onDetail) {
+                    Icon(
+                        imageVector = Icons.Rounded.Tune,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

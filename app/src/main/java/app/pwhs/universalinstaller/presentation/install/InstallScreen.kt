@@ -181,6 +181,9 @@ fun InstallScreen(
             context.startActivity(android.content.Intent(context, app.pwhs.universalinstaller.presentation.sync.SyncActivity::class.java))
         },
         onSetMergeSplits = viewModel::setMergeSplits,
+        onOpenBatchDetail = viewModel::openBatchDetail,
+        onCloseBatchDetail = viewModel::closeBatchDetail,
+        onSaveBatchDetail = viewModel::saveBatchDetail,
         onProfileSelected = { profile ->
             // selectProfile accepts null, so "None" in the batch picker clears the selection.
             viewModel.selectProfile(profile?.id)
@@ -233,6 +236,9 @@ private fun InstallUi(
     onMappingChanged: (String, String?) -> Unit = { _, _ -> },
     onToggleAllUsers: (Boolean) -> Unit = {},
     onSelectUserId: (Int?) -> Unit = {},
+    onOpenBatchDetail: (Uri) -> Unit = {},
+    onCloseBatchDetail: () -> Unit = {},
+    onSaveBatchDetail: (Uri, List<Uri>) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val resource = LocalResources.current
@@ -455,7 +461,25 @@ private fun InstallUi(
         onToggleMerge = onSetMergeSplits,
         onConfirm = onBatchConfirm,
         onSkipParse = onSkipBatchParse,
+        onDetail = onOpenBatchDetail,
     )
+    
+    if (uiState.batchDetailUri != null && uiState.batchState is BatchInstallState.Ready) {
+        BatchDetailSheet(
+            state = uiState.batchState,
+            detailUri = uiState.batchDetailUri,
+            onDismiss = onCloseBatchDetail,
+            onSave = onSaveBatchDetail,
+            profiles = uiState.installerProfiles,
+            appProfileMapping = uiState.appProfileMapping,
+            allUsers = uiState.allUsers,
+            selectedUserId = uiState.selectedUserId,
+            onProfileSelected = onProfileSelected,
+            onMappingChanged = onMappingChanged,
+            onToggleAllUsers = onToggleAllUsers,
+            onSelectUserId = onSelectUserId,
+        )
+    }
 
     var showPermissions by remember { mutableStateOf(false) }
     PermissionCenterSheet(

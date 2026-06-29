@@ -97,6 +97,7 @@ class InstallViewModel(
     private val _obbCopyState = MutableStateFlow<ObbCopyState>(ObbCopyState.Idle)
     private val _attachedObbFiles = MutableStateFlow<List<AttachedObb>>(emptyList())
     private val _batchState = MutableStateFlow<BatchInstallState>(BatchInstallState.Idle)
+    private val _batchDetailUri = MutableStateFlow<android.net.Uri?>(null)
     private val _dialogStage = MutableStateFlow<DialogStage>(DialogStage.None)
     private val _mergeSplits = MutableStateFlow(false)
     private val _selectedProfileId = MutableStateFlow<String?>(null)
@@ -187,6 +188,7 @@ class InstallViewModel(
         application.dataStore.data.map { it[PreferencesKeys.SHIZUKU_ALL_USERS] ?: false },
         application.dataStore.data.map { it[PreferencesKeys.INSTALL_USER_ID] },
         _isApk,
+        _batchDetailUri,
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         InstallUiState(
@@ -208,6 +210,7 @@ class InstallViewModel(
             allUsers = flows[15] as Boolean,
             selectedUserId = flows[16] as Int?,
             isApk = flows[17] as Boolean,
+            batchDetailUri = flows[18] as android.net.Uri?,
         )
     }
         .onStart { activeController().restoreSessionsFromSavedState(viewModelScope) }
@@ -951,6 +954,27 @@ class InstallViewModel(
 
     fun dismissBatchInstall() {
         _batchState.value = BatchInstallState.Idle
+    }
+    
+    fun openBatchDetail(uri: android.net.Uri) {
+        _batchDetailUri.value = uri
+    }
+    
+    fun closeBatchDetail() {
+        _batchDetailUri.value = null
+    }
+    
+    fun saveBatchDetail(uri: android.net.Uri, newSplitUris: List<android.net.Uri>) {
+        val ready = _batchState.value as? BatchInstallState.Ready ?: return
+        val newEntries = ready.entries.map { entry ->
+            if (entry.uri == uri) {
+                entry.copy(splitUris = newSplitUris)
+            } else {
+                entry
+            }
+        }
+        _batchState.value = BatchInstallState.Ready(newEntries)
+        _batchDetailUri.value = null
     }
 
     /**

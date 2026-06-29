@@ -110,6 +110,8 @@ internal fun ApkInfoContent(
     onAttachObb: () -> Unit = {},
     onRemoveObb: (AttachedObb) -> Unit = {},
     onToggleSplit: (Int) -> Unit = {},
+    confirmText: String? = null,
+    cancelText: String? = null,
     profiles: List<InstallerProfile> = emptyList(),
     appProfileMapping: Map<String, String> = emptyMap(),
     allUsers: Boolean = false,
@@ -361,11 +363,11 @@ internal fun ApkInfoContent(
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
-                    onClick = { if (isExpanded && startCompact) isExpanded = false else onCancel() },
+                    onClick = { if (cancelText == null && isExpanded && startCompact) isExpanded = false else onCancel() },
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.medium,
                 ) {
-                    Text(if (isExpanded && startCompact) stringResource(R.string.dialog_back_btn) else stringResource(R.string.cancel))
+                    Text(cancelText ?: if (isExpanded && startCompact) stringResource(R.string.dialog_back_btn) else stringResource(R.string.cancel))
                 }
                 Button(
                     onClick = onInstall,
@@ -373,9 +375,11 @@ internal fun ApkInfoContent(
                     shape = MaterialTheme.shapes.medium,
                     colors = if (isDowngrade) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
                 ) {
-                    Icon(Icons.Rounded.InstallMobile, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (isDowngrade) stringResource(R.string.dialog_downgrade_btn) else stringResource(R.string.txt_install))
+                    if (confirmText == null) {
+                        Icon(Icons.Rounded.InstallMobile, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(confirmText ?: if (isDowngrade) stringResource(R.string.dialog_downgrade_btn) else stringResource(R.string.txt_install))
                 }
             }
         }
