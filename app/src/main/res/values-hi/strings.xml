@@ -707,4 +707,5 @@
     <string name="manage_action_check_vt_sub">इंस्टॉल किए गए APK को स्कैन करें</string>
     <string name="manage_action_installer_source">%1$s द्वारा इंस्टॉल किया गया</string>
     <string name="manage_action_installer_source_sub">साइडलोड / अज्ञात स्रोत</string>
+    <string name="installer_engine_root_request">रूट एक्सेस देने के लिए टैप करें</string>
 </resources>

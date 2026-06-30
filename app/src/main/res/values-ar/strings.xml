@@ -707,4 +707,5 @@
     <string name="manage_action_check_vt_sub">فحص ملف APK المثبّت</string>
     <string name="manage_action_installer_source">تم التثبيت بواسطة %1$s</string>
     <string name="manage_action_installer_source_sub">تحميل جانبي / مصدر غير معروف</string>
+    <string name="installer_engine_root_request">اضغط لمنح صلاحيات الروت</string>
 </resources>

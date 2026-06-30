@@ -707,4 +707,5 @@
     <string name="manage_action_check_vt_sub">Scanează APK-ul instalat</string>
     <string name="manage_action_installer_source">Instalat de %1$s</string>
     <string name="manage_action_installer_source_sub">Încărcat manual / Sursă necunoscută</string>
+    <string name="installer_engine_root_request">Apăsați pentru a acorda acces root</string>
 </resources>

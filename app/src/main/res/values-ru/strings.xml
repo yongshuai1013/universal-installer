@@ -707,4 +707,5 @@
     <string name="manage_action_check_vt_sub">Сканировать установленный APK</string>
     <string name="manage_action_installer_source">Установлено: %1$s</string>
     <string name="manage_action_installer_source_sub">Загружено вручную / Неизвестный источник</string>
+    <string name="installer_engine_root_request">Нажмите, чтобы предоставить root-доступ</string>
 </resources>
