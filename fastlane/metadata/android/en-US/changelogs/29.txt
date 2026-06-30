@@ -1,0 +1,7 @@
+- Added Open App button in install history.
+- Added configuration sheet for individual apps during batch install.
+- Added pull-to-refresh down gesture.
+- Improved Root engine setup and silent installation.
+- Cleared batch selection cleanly when pressing the back button.
+- Refined History card UI and improved fallback for apps without launcher intents.
+- Keep Root engine picker selectable to allow access requests.
