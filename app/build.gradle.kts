@@ -18,8 +18,8 @@ android {
         applicationId = "app.pwhs.universalinstaller"
         minSdk = 24
         targetSdk = 36
-        versionCode = 29
-        versionName = "1.9.9"
+        versionCode = 30
+        versionName = "1.9.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
