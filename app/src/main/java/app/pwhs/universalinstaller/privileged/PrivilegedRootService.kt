@@ -20,7 +20,9 @@ class PrivilegedRootService : RootService() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             org.lsposed.hiddenapibypass.HiddenApiBypass.addHiddenApiExemptions(
                 "Landroid/content/pm/IPackageManager",
-                "Landroid/os/ServiceManager"
+                "Landroid/os/ServiceManager",
+                "Landroid/content/pm/ParceledListSlice",
+                "Landroid/content/pm/BaseParceledListSlice"
             )
         }
         return ServiceBinder() as IBinder
