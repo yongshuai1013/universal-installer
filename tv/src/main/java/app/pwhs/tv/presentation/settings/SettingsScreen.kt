@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -46,6 +48,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
@@ -60,8 +63,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.pwhs.core.data.local.SharedPrefsKeys
 import app.pwhs.core.data.local.dataStore
+import app.pwhs.core.domain.AppThemePreset
 import app.pwhs.core.domain.ThemeMode
 import app.pwhs.core.util.RootShell
+import app.pwhs.tv.ui.theme.accentSwatchColor
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -91,6 +96,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     val themeModeName by context.dataStore.data
         .map { it[stringPreferencesKey("theme_mode")] ?: ThemeMode.System.name }
         .collectAsState(initial = ThemeMode.System.name)
+
+    val themePresetName by context.dataStore.data
+        .map { it[stringPreferencesKey("theme_preset")] ?: AppThemePreset.Orange.name }
+        .collectAsState(initial = AppThemePreset.Orange.name)
 
     LazyColumn(
         modifier = modifier
@@ -145,6 +154,22 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                     },
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+        // Accent color presets (parity with mobile; persisted to the shared theme_preset key).
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                AppThemePreset.entries.forEach { preset ->
+                    AccentSwatch(
+                        color = accentSwatchColor(preset),
+                        selected = themePresetName == preset.name,
+                        onClick = {
+                            scope.launch {
+                                context.dataStore.edit { it[stringPreferencesKey("theme_preset")] = preset.name }
+                            }
+                        },
+                    )
+                }
             }
         }
 
@@ -304,6 +329,30 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun AccentSwatch(color: Color, selected: Boolean, onClick: () -> Unit) {
+    val shape = CircleShape
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.size(64.dp).clip(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.12f),
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors = ClickableSurfaceDefaults.colors(containerColor = color, focusedContainerColor = color),
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (selected) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp),
+                )
             }
         }
     }

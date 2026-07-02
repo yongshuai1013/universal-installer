@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +38,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -60,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -68,11 +73,13 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
+import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import app.pwhs.core.domain.InstalledApp
 import app.pwhs.tv.R
 import app.pwhs.tv.formatSize
 import app.pwhs.tv.rememberAppIcon
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -81,8 +88,10 @@ fun ManageScreen(
     viewModel: ManageViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val actionResult by viewModel.actionResult.collectAsState()
     var reloadTick by remember { mutableIntStateOf(0) }
     var focusedApp by remember { mutableStateOf<InstalledApp?>(null) }
+    var confirm by remember { mutableStateOf<ConfirmAction?>(null) }
     val context = LocalContext.current
 
     // Default focus: land on the first app once, when the list first appears on this visit,
@@ -99,16 +108,44 @@ fun ManageScreen(
     }
 
     LaunchedEffect(uiState.filteredApps, uiState.isLoading) {
-        if (!uiState.isLoading && focusedApp == null && uiState.filteredApps.isNotEmpty()) {
-            focusedApp = uiState.filteredApps.first()
+        if (uiState.isLoading) return@LaunchedEffect
+        val current = focusedApp
+        val fresh = uiState.filteredApps.firstOrNull { it.packageName == current?.packageName }
+        when {
+            // Selection still visible: adopt the refreshed instance so the detail pane (and the
+            // Enable/Disable label) tracks state a privileged op just changed.
+            fresh != null -> if (fresh != current) focusedApp = fresh
+            // Selection dropped out (uninstalled / disabled under the User filter / filtered):
+            // re-home the pane AND move D-pad focus back to the list so it isn't stranded on a
+            // control being animated away.
+            else -> {
+                focusedApp = uiState.filteredApps.firstOrNull()
+                if (uiState.filteredApps.isNotEmpty()) runCatching { firstRowFocus.requestFocus() }
+            }
         }
-        if (!uiState.isLoading && !didRequestFocus && uiState.filteredApps.isNotEmpty()) {
+        if (!didRequestFocus && uiState.filteredApps.isNotEmpty()) {
             didRequestFocus = true
             runCatching { firstRowFocus.requestFocus() }
         }
     }
 
-    Row(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    // Destructive privileged actions confirm first (no system dialog on the silent root path).
+    confirm?.let { pending ->
+        ConfirmDialog(
+            action = pending,
+            onConfirm = {
+                when (pending) {
+                    is ConfirmAction.Uninstall -> viewModel.uninstallSilent(pending.app)
+                    is ConfirmAction.ClearData -> viewModel.clearData(pending.app)
+                }
+                confirm = null
+            },
+            onCancel = { confirm = null },
+        )
+    }
+
+    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Row(modifier = Modifier.fillMaxSize()) {
         // Left Column: Apps List (with Sidebar Background)
         Column(
             modifier = Modifier
@@ -135,18 +172,24 @@ fun ManageScreen(
                 OutlinedTextField(
                     value = uiState.searchQuery,
                     onValueChange = { viewModel.setSearchQuery(it) },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    placeholder = { Text(stringResource(R.string.tv_manage_search_placeholder), style = MaterialTheme.typography.labelSmall) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    modifier = Modifier.weight(1f).height(60.dp),
+                    textStyle = MaterialTheme.typography.titleSmall,
+                    placeholder = { Text(stringResource(R.string.tv_manage_search_placeholder), style = MaterialTheme.typography.titleSmall) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(24.dp)) },
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
-                        unfocusedContainerColor = Color.Transparent,
+                        // Filled + primary-tinted on focus so the field reads as active at 3m,
+                        // not just a thin border-color swap.
+                        focusedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
                         focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
             }
@@ -258,12 +301,12 @@ fun ManageScreen(
                         Text(
                             text = stringResource(R.string.tv_manage_version_prefix, app.versionName ?: ""),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f)
                         )
                         Text(
                             text = app.packageName,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
 
                         Spacer(Modifier.height(24.dp))
@@ -276,76 +319,115 @@ fun ManageScreen(
 
                         Spacer(Modifier.height(32.dp))
 
-                        // Actions - Modern flat list style (kept last so every focusable row is reachable)
-                        ActionItem(label = stringResource(R.string.tv_manage_action_open)) {
-                            runCatching {
-                                context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { intent ->
-                                    context.startActivity(intent)
+                        // Actions — kept last so every focusable row is reachable by D-pad (the
+                        // non-focusable metadata above never traps focus). Privileged rows appear
+                        // only on rooted boxes; each op's result surfaces in the bottom status pill.
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ActionItem(label = stringResource(R.string.tv_manage_action_open)) {
+                                runCatching {
+                                    context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { intent ->
+                                        context.startActivity(intent)
+                                    }
                                 }
                             }
-                        }
-                        
-                        ActionItem(label = stringResource(R.string.tv_manage_action_uninstall)) {
-                            uninstallLauncher.launch(
-                                Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}"))
-                            )
-                        }
 
-                        ActionItem(label = stringResource(R.string.tv_manage_action_extract)) {
-                            viewModel.extractApp(app.packageName, app.appName)
-                        }
-                        
-                        ActionItem(label = stringResource(R.string.tv_manage_action_settings)) {
-                            runCatching {
-                                context.startActivity(
-                                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = Uri.parse("package:${app.packageName}")
-                                    }
-                                )
+                            if (uiState.rootAvailable) {
+                                ActionItem(label = stringResource(R.string.tv_manage_action_force_stop)) {
+                                    viewModel.forceStop(app)
+                                }
+                                ActionItem(
+                                    label = stringResource(
+                                        if (app.enabled) R.string.tv_manage_action_disable
+                                        else R.string.tv_manage_action_enable
+                                    )
+                                ) {
+                                    viewModel.setEnabled(app, !app.enabled)
+                                }
+                                ActionItem(
+                                    label = stringResource(R.string.tv_manage_action_clear_data),
+                                    destructive = true,
+                                ) { confirm = ConfirmAction.ClearData(app) }
                             }
-                        }
 
-                        // Async Status (Extraction) — sits right under the Extract action so it
-                        // stays on-screen while that action holds focus.
-                        val extractState = uiState.extractState
-                        if (extractState !is ExtractState.Idle) {
-                            Spacer(Modifier.height(24.dp))
-                            when (extractState) {
-                                is ExtractState.Running -> if (extractState.packageName == app.packageName) {
-                                    Text(
-                                        text = stringResource(R.string.tv_manage_extracting, (extractState.bytesCopied * 100 / extractState.totalBytes).toInt()),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        style = MaterialTheme.typography.bodyMedium
+                            ActionItem(
+                                label = stringResource(R.string.tv_manage_action_uninstall),
+                                destructive = true,
+                            ) {
+                                // Rooted: confirm then uninstall silently; otherwise the system
+                                // ACTION_DELETE dialog handles its own confirmation.
+                                if (uiState.rootAvailable) {
+                                    confirm = ConfirmAction.Uninstall(app)
+                                } else {
+                                    uninstallLauncher.launch(
+                                        Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}"))
                                     )
                                 }
-                                is ExtractState.Done -> if (extractState.appName == app.appName) {
-                                    Text(text = stringResource(R.string.tv_manage_extracted_success), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                            }
+
+                            ActionItem(label = stringResource(R.string.tv_manage_action_extract)) {
+                                viewModel.extractApp(app.packageName, app.appName)
+                            }
+
+                            ActionItem(label = stringResource(R.string.tv_manage_action_settings)) {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data = Uri.parse("package:${app.packageName}")
+                                        }
+                                    )
                                 }
-                                is ExtractState.Error -> if (extractState.appName == app.appName) {
-                                    Text(text = stringResource(R.string.tv_manage_extract_error_prefix, extractState.message), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                                }
-                                else -> {}
                             }
                         }
-                        
+
                         Spacer(Modifier.height(64.dp))
                     }
                 } else {
-                    // Hero loading state or placeholder
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        if (uiState.isLoading) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        when {
+                            uiState.isLoading -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 ShimmerBox(modifier = Modifier.size(120.dp), shape = RoundedCornerShape(20.dp))
                                 Spacer(Modifier.height(24.dp))
                                 ShimmerBox(modifier = Modifier.width(200.dp).height(32.dp), shape = RoundedCornerShape(8.dp))
                                 Spacer(Modifier.height(8.dp))
                                 ShimmerBox(modifier = Modifier.width(140.dp).height(24.dp), shape = RoundedCornerShape(8.dp))
                             }
+                            uiState.searchQuery.isNotBlank() -> DetailEmptyState(
+                                icon = Icons.Rounded.SearchOff,
+                                title = stringResource(R.string.tv_manage_no_matches, uiState.searchQuery),
+                                actionLabel = stringResource(R.string.tv_manage_clear_search),
+                                onAction = { viewModel.setSearchQuery("") },
+                            )
+                            else -> DetailEmptyState(
+                                icon = Icons.Rounded.Apps,
+                                title = stringResource(R.string.tv_manage_empty),
+                                actionLabel = null,
+                                onAction = {},
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+        // Screen-level status pill: privileged-action results + extract progress/outcome.
+        // Rendered as an overlay so it (and its focusable Dismiss/Retry) is always reachable,
+        // never a non-focusable dead zone below the scrolling action list.
+        ManageStatusOverlay(
+            actionResult = actionResult,
+            extractState = uiState.extractState,
+            onDismissAction = { viewModel.clearActionResult() },
+            onDismissExtract = { viewModel.dismissExtractResult() },
+            // Pressing Dismiss removes the focused pill button, so hand focus back to the list
+            // rather than stranding it. (The auto-dismiss timers use the plain callbacks above,
+            // which must NOT steal focus from wherever the user has moved.)
+            onErrorDismiss = {
+                viewModel.clearActionResult()
+                viewModel.dismissExtractResult()
+                runCatching { firstRowFocus.requestFocus() }
+            },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp),
+        )
     }
 }
 
@@ -415,26 +497,34 @@ private fun AppListRow(
 @Composable
 private fun ActionItem(
     label: String,
+    modifier: Modifier = Modifier,
+    destructive: Boolean = false,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(12.dp)
+    // Solid, color-shifting focus (plus a larger 1.05 scale) so it's obvious which row — and
+    // especially which destructive row — is focused from the couch. A faint rest fill keeps the
+    // rows legible as a group even before focus lands.
+    val focusContainer = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val focusContent = if (destructive) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
+    val restContent = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     Surface(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(56.dp)
             .clip(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            focusedContentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
+            focusedContainerColor = focusContainer,
+            contentColor = restContent,
+            focusedContentColor = focusContent
         )
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
@@ -454,21 +544,25 @@ private fun SmallFilterChip(selected: Boolean, label: String, onClick: () -> Uni
         onClick = onClick,
         shape = ButtonDefaults.shape(shape),
         scale = ButtonDefaults.scale(focusedScale = 1.05f),
+        // Theme-aware fills (Color.Gray/Color.White were invisible / low-contrast on the
+        // light-mode white sidebar) with a clear primary focus highlight.
         colors = ButtonDefaults.colors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.White.copy(alpha = 0.05f),
-            contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else Color.Gray
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.primary,
+            focusedContentColor = MaterialTheme.colorScheme.onPrimary
         ),
-        modifier = Modifier.height(32.dp).clip(shape)
+        modifier = Modifier.height(48.dp).clip(shape)
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall)
+        Text(label, style = MaterialTheme.typography.titleSmall)
     }
 }
 
 @Composable
 private fun InfoBlock(label: String, value: String) {
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text = value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+        Text(text = label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -503,4 +597,182 @@ fun ShimmerBox(modifier: Modifier = Modifier, shape: Shape) {
             .clip(shape)
             .background(MaterialTheme.colorScheme.onSurface.copy(alpha = alpha * 0.15f)),
     )
+}
+
+/** A destructive Manage action awaiting confirmation (silent root path has no system dialog). */
+private sealed interface ConfirmAction {
+    val app: InstalledApp
+    data class Uninstall(override val app: InstalledApp) : ConfirmAction
+    data class ClearData(override val app: InstalledApp) : ConfirmAction
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun ConfirmDialog(
+    action: ConfirmAction,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val title = when (action) {
+        is ConfirmAction.Uninstall -> stringResource(R.string.tv_manage_confirm_uninstall_title, action.app.appName)
+        is ConfirmAction.ClearData -> stringResource(R.string.tv_manage_confirm_clear_title, action.app.appName)
+    }
+    // Default focus on Cancel so a stray center-press never fires the destructive action.
+    val cancelFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { cancelFocus.requestFocus() } }
+
+    Dialog(onDismissRequest = onCancel) {
+        Surface(
+            modifier = Modifier.widthIn(min = 420.dp, max = 560.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = SurfaceDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        ) {
+            Column(Modifier.padding(32.dp)) {
+                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    stringResource(R.string.tv_manage_confirm_irreversible),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(28.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val btnShape = RoundedCornerShape(14.dp)
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f).clip(btnShape),
+                        shape = ButtonDefaults.shape(btnShape),
+                        colors = ButtonDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                    ) { Text(stringResource(R.string.tv_manage_confirm_yes), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
+                    Button(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f).clip(btnShape).focusRequester(cancelFocus),
+                        shape = ButtonDefaults.shape(btnShape),
+                        colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    ) { Text(stringResource(R.string.tv_manage_confirm_cancel), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun ManageStatusOverlay(
+    actionResult: ActionResult?,
+    extractState: ExtractState,
+    onDismissAction: () -> Unit,
+    onDismissExtract: () -> Unit,
+    onErrorDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Transient successes fade themselves; errors linger with a focusable Dismiss.
+    LaunchedEffect(actionResult) {
+        if (actionResult != null && !actionResult.isError) {
+            delay(2500)
+            onDismissAction()
+        }
+    }
+    LaunchedEffect(extractState) {
+        when (extractState) {
+            is ExtractState.Done -> { delay(3000); onDismissExtract() }
+            is ExtractState.Error -> { delay(5000); onDismissExtract() }
+            else -> {}
+        }
+    }
+
+    val visible = actionResult != null || extractState !is ExtractState.Idle
+    AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut(), modifier = modifier) {
+        // Color and text come from the SAME chosen source (actionResult wins over extract) so a
+        // success message can never render in the error/red style, or vice-versa.
+        val isError: Boolean
+        val message: String
+        if (actionResult != null) {
+            isError = actionResult.isError
+            message = actionResult.message
+        } else {
+            when (val e = extractState) {
+                is ExtractState.Running -> {
+                    isError = false
+                    val pct = if (e.totalBytes > 0) (e.bytesCopied * 100 / e.totalBytes).toInt() else 0
+                    message = stringResource(R.string.tv_manage_extracting, pct)
+                }
+                is ExtractState.Done -> { isError = false; message = stringResource(R.string.tv_manage_extracted_success) }
+                is ExtractState.Error -> { isError = true; message = stringResource(R.string.tv_manage_extract_error_prefix, e.message) }
+                else -> { isError = false; message = "" }
+            }
+        }
+        val container = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
+        val content = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
+        Surface(
+            modifier = Modifier.widthIn(min = 360.dp, max = 720.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = SurfaceDefaults.colors(containerColor = container, contentColor = content),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    message,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isError) {
+                    Spacer(Modifier.width(20.dp))
+                    val btnShape = CircleShape
+                    Button(
+                        onClick = onErrorDismiss,
+                        shape = ButtonDefaults.shape(btnShape),
+                        modifier = Modifier.clip(btnShape),
+                        colors = ButtonDefaults.colors(containerColor = content.copy(alpha = 0.15f), contentColor = content),
+                    ) { Text(stringResource(R.string.tv_receive_dismiss)) }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun DetailEmptyState(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    actionLabel: String?,
+    onAction: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(420.dp),
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(72.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (actionLabel != null) {
+            Spacer(Modifier.height(24.dp))
+            val shape = CircleShape
+            Button(onClick = onAction, shape = ButtonDefaults.shape(shape), modifier = Modifier.clip(shape)) {
+                Text(actionLabel)
+            }
+        }
+    }
 }

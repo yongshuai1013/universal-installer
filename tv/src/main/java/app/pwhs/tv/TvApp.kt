@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,10 +56,11 @@ import androidx.compose.animation.core.tween
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun TvApp(modifier: Modifier = Modifier) {
-    var tab by remember { mutableIntStateOf(0) }
+    // Survives the locale/config-change recreate so the user stays on their current tab.
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     var isRailFocused by remember { mutableStateOf(false) }
     val railWidth by animateDpAsState(
-        targetValue = if (isRailFocused) 240.dp else 88.dp,
+        targetValue = if (isRailFocused) 280.dp else 120.dp,
         animationSpec = tween(durationMillis = 300),
         label = "railWidth"
     )
@@ -78,7 +80,9 @@ fun TvApp(modifier: Modifier = Modifier) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .padding(vertical = 24.dp, horizontal = 16.dp),
+                        // Overscan-safe: the rail background bleeds to the edge, but its content
+                        // (the only global navigation) is inset past the ~5% TV cutoff on the left.
+                        .padding(start = 40.dp, end = 16.dp, top = 28.dp, bottom = 28.dp),
                     horizontalAlignment = Alignment.Start,
                 ) {
 

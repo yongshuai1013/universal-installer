@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -41,6 +42,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -71,6 +74,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
@@ -127,10 +131,9 @@ fun ReceiveScreen(
     ) { hasStorage = checkStoragePermission() }
 
     LaunchedEffect(pending) {
-        if (pending != null) {
-            currentTab = InstallTab.Receive
-            runCatching { installFocus.requestFocus() }
-        }
+        // Just switch to the Receive tab; the Install button requests focus itself once it's
+        // actually composed (after the AnimatedContent crossfade) — see HeroPendingCard.
+        if (pending != null) currentTab = InstallTab.Receive
     }
     
     LaunchedEffect(hasStorage) {
@@ -219,6 +222,8 @@ fun ReceiveScreen(
                         isScanning = isScanning,
                         downloads = downloads,
                         onApkClick = { selectedApk = TvApkItem.Local(it) },
+                        onRescan = { viewModel.scanLocalApks() },
+                        onReceiveFromPhone = { currentTab = InstallTab.Receive },
                         onGrantPermission = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
@@ -329,12 +334,14 @@ private fun InstallStatusOverlay(
                             overflow = TextOverflow.Ellipsis
                         )
                         Spacer(Modifier.height(16.dp))
+                        val retryFocus = remember { FocusRequester() }
+                        LaunchedEffect(Unit) { runCatching { retryFocus.requestFocus() } }
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             val btnShape = CircleShape
                             Button(
                                 onClick = onRetry,
                                 shape = ButtonDefaults.shape(btnShape),
-                                modifier = Modifier.clip(btnShape)
+                                modifier = Modifier.clip(btnShape).focusRequester(retryFocus)
                             ) { Text(stringResource(R.string.tv_receive_retry)) }
                             Button(
                                 onClick = onDismiss,
@@ -426,39 +433,41 @@ private fun ReceiveContent(
             ) {
                 when (val s = status) {
                     is ReceiverStatus.Running -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(280.dp)
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .background(Color.White)
-                                    .padding(16.dp)
-                            ) {
-                                QrCode(data = s.url, modifier = Modifier.fillMaxSize())
-                            }
-                            
-                            Spacer(Modifier.width(40.dp))
-                            
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "http://${s.ip}:${s.port}",
-                                    style = MaterialTheme.typography.displaySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(Modifier.height(24.dp))
-                                GuideStep(1, stringResource(R.string.tv_receive_step1))
-                                Spacer(Modifier.height(12.dp))
-                                GuideStep(2, stringResource(R.string.tv_receive_step2))
+                        // No LAN address → the QR would encode 0.0.0.0 (unscannable). Guide the
+                        // user to Wi-Fi instead of showing a dead code.
+                        if (s.ip == "0.0.0.0") {
+                            NoNetworkState()
+                        } else {
+                            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                // Stack QR-over-guide when the pane is too narrow for a side-by-side
+                                // layout, so the address never crushes into unreadable wrapping.
+                                if (maxWidth < 560.dp) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        QrPanel(url = s.url, size = 220.dp)
+                                        Spacer(Modifier.height(28.dp))
+                                        ConnectionGuide(ip = s.ip, port = s.port, alignment = Alignment.CenterHorizontally)
+                                    }
+                                } else {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        QrPanel(url = s.url, size = 240.dp)
+                                        Spacer(Modifier.width(40.dp))
+                                        Box(Modifier.weight(1f)) {
+                                            ConnectionGuide(ip = s.ip, port = s.port, alignment = Alignment.Start)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                     ReceiverStatus.Stopped -> {
-                        Text(stringResource(R.string.tv_receive_starting), style = MaterialTheme.typography.headlineLarge)
+                        Text(
+                            stringResource(R.string.tv_receive_starting),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -477,10 +486,59 @@ private fun GuideStep(num: Int, text: String) {
         )
         Spacer(Modifier.width(12.dp))
         Text(
-            text, 
-            style = MaterialTheme.typography.titleLarge, 
+            text,
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified
+        )
+    }
+}
+
+@Composable
+private fun QrPanel(url: String, size: androidx.compose.ui.unit.Dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.White)
+            .padding(16.dp)
+    ) {
+        QrCode(data = url, modifier = Modifier.fillMaxSize())
+    }
+}
+
+@Composable
+private fun ConnectionGuide(ip: String, port: Int, alignment: Alignment.Horizontal) {
+    Column(horizontalAlignment = alignment) {
+        Text(
+            "http://$ip:$port",
+            // headlineSmall (not displaySmall) so a full address stays on one line in the
+            // ~560dp side-by-side pane instead of wrapping into several ugly lines.
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (alignment == Alignment.CenterHorizontally) TextAlign.Center else TextAlign.Start,
+        )
+        Spacer(Modifier.height(20.dp))
+        GuideStep(1, stringResource(R.string.tv_receive_step1))
+        Spacer(Modifier.height(12.dp))
+        GuideStep(2, stringResource(R.string.tv_receive_step2))
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun NoNetworkState() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(520.dp)) {
+        Icon(Icons.Rounded.WifiOff, contentDescription = null, modifier = Modifier.size(72.dp), tint = MaterialTheme.colorScheme.error)
+        Spacer(Modifier.height(20.dp))
+        Text(
+            stringResource(R.string.tv_receive_no_network),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -492,10 +550,12 @@ private fun LocalFilesContent(
     isScanning: Boolean,
     downloads: List<ApkFile>,
     onApkClick: (ApkFile) -> Unit,
-    onGrantPermission: () -> Unit
+    onGrantPermission: () -> Unit,
+    onRescan: () -> Unit,
+    onReceiveFromPhone: () -> Unit,
 ) {
-    if (!hasStorage) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    when {
+        !hasStorage -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(480.dp)) {
                 Icon(Icons.Rounded.Folder, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(24.dp))
@@ -513,12 +573,54 @@ private fun LocalFilesContent(
                 }
             }
         }
-    } else if (downloads.isEmpty() && !isScanning) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(stringResource(R.string.tv_receive_no_apks), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        isScanning && downloads.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier.width(220.dp).height(6.dp).clip(CircleShape),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+                Spacer(Modifier.height(20.dp))
+                Text(stringResource(R.string.tv_receive_scanning), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-    } else {
-        LazyVerticalGrid(
+
+        downloads.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(520.dp)) {
+                Icon(Icons.Rounded.Folder, contentDescription = null, modifier = Modifier.size(72.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(20.dp))
+                Text(stringResource(R.string.tv_receive_no_apks), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(28.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val shape = CircleShape
+                    Button(
+                        onClick = onRescan,
+                        shape = ButtonDefaults.shape(shape),
+                        modifier = Modifier.clip(shape),
+                        colors = ButtonDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.tv_receive_rescan))
+                    }
+                    Button(
+                        onClick = onReceiveFromPhone,
+                        shape = ButtonDefaults.shape(shape),
+                        modifier = Modifier.clip(shape),
+                    ) {
+                        Icon(Icons.Rounded.PhoneAndroid, contentDescription = null, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.tv_receive_from_phone))
+                    }
+                }
+            }
+        }
+
+        else -> LazyVerticalGrid(
             columns = GridCells.Fixed(1), // Wide cards look better in a single column list
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -583,16 +685,18 @@ private fun ApkWideItem(apk: ApkFile, onClick: () -> Unit) {
                 )
                 Text(
                     text = if (meta != null) "${meta.packageName} · v${meta.versionName}" else apk.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (MaterialTheme.colorScheme.onSurface == MaterialTheme.colorScheme.onPrimary) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge,
+                    // Track the Surface's content color (onSurface at rest, onPrimary when focused)
+                    // so the subtitle stays legible on the focused orange row.
+                    color = LocalContentColor.current.copy(alpha = 0.8f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             Text(
                 text = formatSize(context, apk.sizeBytes),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 16.dp)
             )
@@ -612,6 +716,8 @@ private fun HeroPendingCard(
     val context = LocalContext.current
     val meta = apk.metadata
     val shape = RoundedCornerShape(28.dp)
+    // Land focus on Install now that the button is composed (the crossfade is done).
+    LaunchedEffect(Unit) { runCatching { installFocus.requestFocus() } }
     Surface(
         onClick = onInstall,
         modifier = Modifier
@@ -667,7 +773,12 @@ private fun HeroPendingCard(
                             .weight(1f)
                             .clip(btnShape),
                         shape = ButtonDefaults.shape(btnShape),
-                        colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        // Distinct from the card fill so the secondary action reads as a button
+                        // at rest (surfaceVariant.copy(0.5f) composited onto the surfaceVariant card).
+                        colors = ButtonDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
                     ) {
                         Text(stringResource(R.string.tv_receive_dismiss), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                     }
@@ -702,8 +813,8 @@ private fun TvStorageCard(stats: StorageStats) {
                         android.text.format.Formatter.formatShortFileSize(context, stats.freeBytes),
                         android.text.format.Formatter.formatShortFileSize(context, stats.totalBytes)
                     ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -817,7 +928,7 @@ private fun ApkDetailsDialog(
 
                 Text(name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 if (pkg.isNotBlank()) {
-                    Text(pkg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(pkg, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 }
                 
                 Spacer(Modifier.height(24.dp))
@@ -886,10 +997,10 @@ private fun DetailMetaItem(label: String, value: String, modifier: Modifier = Mo
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .padding(12.dp)
+            .padding(16.dp)
     ) {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

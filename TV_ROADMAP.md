@@ -47,9 +47,12 @@ manage (A2, A3) is weighted high.
   the result overlay shows "Installed silently ✓".
   *(Shizuku path deferred — root covers the rooted-box target; Shizuku needs the
   rikka dep + reflection and is a smaller TV audience.)*
-- [ ] **A3 — Manage: privileged actions + multi-select** (~1.5d) — when Root/
-  Shizuku ready: Force-stop · Enable/Disable · Clear-data · silent Uninstall in the
-  detail pane; a "Select" mode for batch uninstall (D-pad friendly, no long-press).
+- [~] **A3 — Manage: privileged actions + multi-select** (~1.5d) — **single-app
+  privileged actions done**: Force-stop · Enable/Disable · Clear-data · silent
+  Uninstall now render in the detail pane, gated on `uiState.rootAvailable`, with
+  destructive-confirm dialogs and a screen-level result pill (`actionResult`, which
+  the VM already exposed but the UI never showed). *Multi-select / batch uninstall
+  still open (VM has `selectionMode`/`batchUninstall`; no UI entry yet).*
 - [ ] **A4 — "Send to TV" QR scan from mobile** (~1d) — mobile scans the TV QR →
   parses URL+token → multipart-uploads the chosen APK. Browser upload stays as
   fallback.
@@ -69,14 +72,28 @@ manage (A2, A3) is weighted high.
   `onProgress`/`totalBytes` callback (manual buffered copy); `ReceiveViewModel`
   exposes `installProgress: Float?`; the A1 overlay shows a determinate
   `LinearProgressIndicator` (indeterminate when size is unknown).
-- [ ] **B3 — Safe-area / overscan + 10-foot type** (~0.5d) — 5% edge-safe padding,
-  minimum legible type sizes, consistent focus border/glow via tv-material3.
-- [ ] **B4 — Accent color presets** (~0.5d) — port the 5 mobile presets into TV
-  Settings, persisted in the shared `dataStore`.
-- [ ] **B5 — TV-friendly text entry** (~0.5d) — voice search (leanback) / alpha
-  quick-filter chips for Manage; keep the typed field as secondary.
-- [ ] **B6 — Empty/error states + Extract polish** (~0.5d) — illustrated empty
-  states; after Extract show the output path + "open Downloads".
+- [x] **B3 — Safe-area / overscan + 10-foot type** (~0.5d) — whole `Type.kt` ramp
+  lifted above the couch floor (added the missing `labelLarge` that drove nav labels
+  + buttons at 14sp, plus `titleSmall`/`bodySmall`/`headline*`); nav-rail content
+  inset past the ~5% overscan cut (rail widened to fit); stronger focus affordance on
+  action rows (solid color-shift + 1.05 scale, destructive rows tinted `error`).
+- [x] **B4 — Accent color presets** (~0.5d) — 5 mobile presets ported to TV via
+  `ColorScheme.withAccent` (reuses the shared `AppThemePreset`), persisted to the same
+  `theme_preset` dataStore key (mobile↔TV parity); swatch picker in Settings.
+- [~] **B5 — TV-friendly text entry** (~0.5d) — Manage search field enlarged with a
+  strong filled/primary focus cue (was a color-only mobile `OutlinedTextField`).
+  *Voice search / alpha quick-filter chips still open.*
+- [x] **B6 — Empty/error states + Extract polish** (~0.5d) — illustrated empty
+  states for Manage (empty + no-match w/ Clear-search) and Local files (empty +
+  scanning + Rescan/Receive actions); no-network state replaces the dead `0.0.0.0`
+  QR; Extract progress/result moved into the reachable status pill (was a focus trap
+  below the actions). *"Open Downloads" skipped — extract writes a `file://` DocumentFile
+  and TV boxes lack a Downloads viewer.*
+- [x] **B7 — Onboarding theme bridge + startup polish** (this pass) — shared `:core`
+  onboarding rendered in stock light-purple on TV (it reads mobile-material3); added a
+  TV-only `OnboardingThemeBridge` so it matches the orange/navy brand + honors dark
+  mode. Single-instance splash (no double-fade, no replay on locale change), in-place
+  locale switch via `recreate()`, tab survives config change, LanguageScreen `BackHandler`.
 
 ---
 
@@ -84,9 +101,10 @@ manage (A2, A3) is weighted high.
 
 1. ~~**A1 + B1 + B2** — fix real bugs + focus foundation.~~ ✅ done (`:tv:assembleDebug` green)
 2. ~~**A2** — privileged root backend (highest leverage on rooted boxes).~~ ✅ done
-3. **A3** — Manage privileged + batch. *(~1.5d)*
-4. **B3 + B4 + B6** — 10-foot polish. *(~1.5d)*
+3. ~~**A3 (single-app) + B3 + B4 + B6 + B7** — privileged detail actions + 10-foot
+   polish + onboarding/startup.~~ ✅ done (`:tv:assembleDebug` green)
+4. **A3 (multi-select)** — batch uninstall UI on top of the existing VM support.
 5. **A4 + A5** — send-to-TV + URL. *(~2d)*
-6. **A6 + B5** — APK detail + TV-friendly input. *(~1d)*
+6. **A6 + B5 (voice)** — APK detail + TV-friendly input. *(~1d)*
 
 Each item ships independently; keep `:tv:assembleDebug` green after each.

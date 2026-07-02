@@ -1,37 +1,55 @@
 package app.pwhs.tv.presentation.settings
 
-import android.content.Intent
+import android.app.Activity
+import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import app.pwhs.tv.MainActivity
+import app.pwhs.tv.R
 import app.pwhs.tv.util.LocaleHelper
-import java.util.Locale
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun LanguageScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val currentTag = remember { LocaleHelper.getStoredLanguage(context) }
-    
+    val backFocus = remember { FocusRequester() }
+
+    // D-pad Back returns to Settings instead of bubbling to the Activity and exiting the app.
+    BackHandler(onBack = onBack)
+
+    // Entering this screen removes the Settings card that had focus, so land focus on the Back row.
+    LaunchedEffect(Unit) { runCatching { backFocus.requestFocus() } }
+
     val languages = remember {
         listOf(
             "" to "System Default",
@@ -55,15 +73,36 @@ fun LanguageScreen(onBack: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Text(
-                "Language",
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            val shape = RoundedCornerShape(12.dp)
+            Surface(
+                onClick = onBack,
+                modifier = Modifier
+                    .clip(shape)
+                    .focusRequester(backFocus),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                shape = ClickableSurfaceDefaults.shape(shape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    focusedContainerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        stringResource(R.string.tv_language_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
-        
+
         items(languages) { (tag, name) ->
             val isSelected = currentTag == tag
             val shape = RoundedCornerShape(12.dp)
@@ -71,10 +110,11 @@ fun LanguageScreen(onBack: () -> Unit) {
                 onClick = {
                     if (!isSelected) {
                         LocaleHelper.setAppLanguage(context, tag)
-                        val intent = Intent(context, MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        // API 33+ recreates automatically when applicationLocales changes; pre-33
+                        // we recreate ourselves so LocaleHelper.wrap() re-applies on the new context.
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            (context as? Activity)?.recreate()
                         }
-                        context.startActivity(intent)
                     }
                 },
                 modifier = Modifier
