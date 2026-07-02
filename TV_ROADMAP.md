@@ -97,6 +97,38 @@ manage (A2, A3) is weighted high.
 
 ---
 
+## Planned next — deferred from the 10-foot polish pass (do later)
+
+Concrete, scoped follow-ups. Each is independent and ships on top of the current code.
+
+- [ ] **A3b — Multi-select / batch uninstall UI** — `ManageViewModel` already has the
+  whole engine (`selectionMode`, `selectedPackages`, `toggleSelection`,
+  `selectAllVisible`, `enterSelection`/`exitSelection`, `batchUninstall`). Only the UI
+  entry is missing. Add a "Select" action (or a long-press-free toggle) that flips
+  `enterSelection()`; render a checkbox/highlight per `AppListRow` driven by
+  `selectedPackages`; add a selection top-bar ("N selected" · Select all · Uninstall
+  selected · Close) using the existing `tv_manage_selected_count` / `tv_manage_select_all`
+  / `tv_manage_batch_uninstall` / `tv_manage_selection_hint` strings; route Uninstall
+  selected → `batchUninstall()` behind a destructive `ConfirmDialog`. Keep it D-pad
+  friendly (no long-press). Files: `presentation/manage/ManageScreen.kt`.
+- [ ] **B5b — Voice / quick text entry for Manage search** — the field is already
+  enlarged with a strong focus cue; add a leanback voice-search affordance
+  (`RecognizerIntent.ACTION_RECOGNIZE_SPEECH` → feed result to `setSearchQuery`) and/or
+  alpha quick-filter chips, keeping the typed field as the secondary path. Files:
+  `presentation/manage/ManageScreen.kt` (+ a mic launcher).
+- [ ] **L2 — TV-native onboarding fork** — the `OnboardingThemeBridge` fixes the critical
+  wrong-palette bug, but the shared `:core` onboarding still uses mobile
+  `androidx.compose.material3` buttons + a forward-only `HorizontalPager` (weak focus at
+  3m, no initial focus, no D-pad Prev/Next). Build a TV-specific onboarding in `:tv` with
+  `androidx.tv.material3` Surface/Button (built-in focus scale/border), an initial
+  `FocusRequester` on the primary CTA, explicit focusable Previous/Next, ≥18–24sp body,
+  and ~5% overscan; route `MainActivity`'s `onboardingCompleted == false` branch to it.
+  **Do NOT add `androidx.tv.material3` to `:core`** and don't force-focus the shared
+  screen — either would regress the mobile build. New files under
+  `tv/.../presentation/onboarding/`; retires the need for the bridge.
+
+---
+
 ## Suggested order
 
 1. ~~**A1 + B1 + B2** — fix real bugs + focus foundation.~~ ✅ done (`:tv:assembleDebug` green)
