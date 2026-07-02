@@ -1,0 +1,4 @@
+- Add System Installer fallback when installation fails.
+- Fix filename sanitization to allow parentheses.
+- Fix visibility of background service apps.
+- Fix root mode default installer.
