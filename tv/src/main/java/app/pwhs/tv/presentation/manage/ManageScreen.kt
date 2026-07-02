@@ -49,6 +49,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -83,6 +85,11 @@ fun ManageScreen(
     var focusedApp by remember { mutableStateOf<InstalledApp?>(null) }
     val context = LocalContext.current
 
+    // Default focus: land on the first app once, when the list first appears on this visit,
+    // so the D-pad has a home instead of stranding focus on the rail.
+    val firstRowFocus = remember { FocusRequester() }
+    var didRequestFocus by remember { mutableStateOf(false) }
+
     val uninstallLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { reloadTick++ }
@@ -94,6 +101,10 @@ fun ManageScreen(
     LaunchedEffect(uiState.filteredApps, uiState.isLoading) {
         if (!uiState.isLoading && focusedApp == null && uiState.filteredApps.isNotEmpty()) {
             focusedApp = uiState.filteredApps.first()
+        }
+        if (!uiState.isLoading && !didRequestFocus && uiState.filteredApps.isNotEmpty()) {
+            didRequestFocus = true
+            runCatching { firstRowFocus.requestFocus() }
         }
     }
 
@@ -203,10 +214,12 @@ fun ManageScreen(
                         }
                     }
                 } else {
+                    val firstPackage = uiState.filteredApps.firstOrNull()?.packageName
                     items(uiState.filteredApps, key = { it.packageName }) { app ->
                         AppListRow(
                             app = app,
                             isSelected = focusedApp?.packageName == app.packageName,
+                            focusRequester = if (app.packageName == firstPackage) firstRowFocus else null,
                             onFocus = { focusedApp = app }
                         )
                     }
@@ -253,9 +266,17 @@ fun ManageScreen(
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                         )
 
-                        Spacer(Modifier.height(40.dp))
+                        Spacer(Modifier.height(24.dp))
 
-                        // Actions - Modern flat list style
+                        // Metadata first — non-focusable, so it must sit ABOVE the actions,
+                        // otherwise D-pad can't scroll past the last action to reveal it.
+                        InfoBlock(label = stringResource(R.string.tv_manage_storage_used), value = formatSize(context, app.sizeBytes))
+                        if (app.isSystemApp) InfoBlock(label = stringResource(R.string.tv_manage_type), value = stringResource(R.string.tv_manage_system_app))
+                        if (!app.enabled) InfoBlock(label = stringResource(R.string.tv_manage_status), value = stringResource(R.string.tv_manage_status_disabled))
+
+                        Spacer(Modifier.height(32.dp))
+
+                        // Actions - Modern flat list style (kept last so every focusable row is reachable)
                         ActionItem(label = stringResource(R.string.tv_manage_action_open)) {
                             runCatching {
                                 context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { intent ->
@@ -284,14 +305,8 @@ fun ManageScreen(
                             }
                         }
 
-                        Spacer(Modifier.height(40.dp))
-                        
-                        // Metadata Breakdown
-                        InfoBlock(label = stringResource(R.string.tv_manage_storage_used), value = formatSize(context, app.sizeBytes))
-                        if (app.isSystemApp) InfoBlock(label = stringResource(R.string.tv_manage_type), value = stringResource(R.string.tv_manage_system_app))
-                        if (!app.enabled) InfoBlock(label = stringResource(R.string.tv_manage_status), value = stringResource(R.string.tv_manage_status_disabled))
-                        
-                        // Async Status (Extraction)
+                        // Async Status (Extraction) — sits right under the Extract action so it
+                        // stays on-screen while that action holds focus.
                         val extractState = uiState.extractState
                         if (extractState !is ExtractState.Idle) {
                             Spacer(Modifier.height(24.dp))
@@ -339,16 +354,18 @@ fun ManageScreen(
 private fun AppListRow(
     app: InstalledApp,
     isSelected: Boolean,
+    focusRequester: FocusRequester?,
     onFocus: () -> Unit
 ) {
     val icon = rememberAppIcon(app.packageName, sizePx = 120)
     val shape = RoundedCornerShape(12.dp)
-    
+
     Surface(
         onClick = { /* Detail pane updates on focus */ },
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { if (it.isFocused) onFocus() },
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f), // Minimal scale to avoid overlap
         shape = ClickableSurfaceDefaults.shape(shape),

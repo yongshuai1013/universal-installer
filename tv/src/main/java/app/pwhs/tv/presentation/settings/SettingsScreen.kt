@@ -54,11 +54,14 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.tv.material3.Icon
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import app.pwhs.core.data.local.SharedPrefsKeys
 import app.pwhs.core.data.local.dataStore
 import app.pwhs.core.domain.ThemeMode
+import app.pwhs.core.util.RootShell
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -176,6 +179,37 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 TitleValue(
                     stringResource(R.string.tv_settings_allow_installs_title),
                     stringResource(R.string.tv_settings_allow_installs_subtitle)
+                )
+            }
+        }
+        item {
+            // Probing root here surfaces the device's grant prompt once; the result is cached.
+            val rootAvailable by produceState<Boolean?>(initialValue = null) {
+                value = RootShell.isAvailable()
+            }
+            val silentEnabled by context.dataStore.data
+                .map { it[SharedPrefsKeys.ROOT_SILENT_INSTALL] ?: true }
+                .collectAsState(initial = true)
+            SettingsCard(onClick = {
+                scope.launch {
+                    context.dataStore.edit { it[SharedPrefsKeys.ROOT_SILENT_INSTALL] = !silentEnabled }
+                }
+            }) {
+                TitleValue(
+                    stringResource(R.string.tv_settings_silent_install_title),
+                    if (silentEnabled) stringResource(R.string.tv_settings_silent_install_on)
+                    else stringResource(R.string.tv_settings_silent_install_off)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = when (rootAvailable) {
+                        null -> stringResource(R.string.tv_settings_checking_root)
+                        true -> stringResource(R.string.tv_settings_root_available)
+                        else -> stringResource(R.string.tv_settings_root_unavailable)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (rootAvailable == false) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.primary
                 )
             }
         }

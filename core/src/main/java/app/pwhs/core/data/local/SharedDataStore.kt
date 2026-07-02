@@ -10,4 +10,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
 
 object SharedPrefsKeys {
     val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+
+    /** TV: when true (default) and root is available, install silently via the root shell. */
+    val ROOT_SILENT_INSTALL = booleanPreferencesKey("tv_root_silent_install")
 }

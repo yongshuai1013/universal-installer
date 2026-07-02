@@ -40,23 +40,36 @@ class ApkInstaller(private val context: Context) {
 
     /** Convenience for installing a staged file (e.g. an upload received over LAN). */
     suspend fun install(source: File): Result =
-        install(Uri.fromFile(source), isBundle = source.extension.lowercase() in BUNDLE_EXTS)
+        install(
+            Uri.fromFile(source),
+            isBundle = source.extension.lowercase() in BUNDLE_EXTS,
+            totalBytes = source.length(),
+        )
 
     /**
      * Install from a content/file [uri]. [isBundle] true unzips split APKs into one session.
+     * [totalBytes] (the source's on-disk size, `-1` if unknown) drives [onProgress], which is
+     * invoked with cumulative bytes written and the total on the calling (IO) thread — TV shows
+     * this as a determinate bar while the session is being written.
      * Suspends until the install reaches a terminal state (the user-action confirm screen is
      * launched mid-flow). Safe to call off the main thread.
      */
-    suspend fun install(uri: Uri, isBundle: Boolean): Result {
+    suspend fun install(
+        uri: Uri,
+        isBundle: Boolean,
+        totalBytes: Long = -1L,
+        onProgress: ((written: Long, total: Long) -> Unit)? = null,
+    ): Result {
         val pm = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         val sessionId = pm.createSession(params)
+        val progress = onProgress?.let { Progress(totalBytes, it) }
         try {
             pm.openSession(sessionId).use { session ->
                 if (isBundle) {
-                    writeBundle(session, uri)
+                    writeBundle(session, uri, progress)
                 } else {
-                    openInput(uri).use { writeEntry(session, "base.apk", it, -1L) }
+                    openInput(uri).use { writeEntry(session, "base.apk", it, -1L, progress) }
                 }
                 return commitAndAwait(session, sessionId)
             }
@@ -66,11 +79,20 @@ class ApkInstaller(private val context: Context) {
         }
     }
 
+    /** Accumulates bytes written across every entry and relays them to the caller's callback. */
+    private class Progress(val total: Long, val emit: (Long, Long) -> Unit) {
+        private var written = 0L
+        fun add(bytes: Int) {
+            written += bytes
+            emit(written, total)
+        }
+    }
+
     private fun openInput(uri: Uri): InputStream =
         context.contentResolver.openInputStream(uri)
             ?: throw IllegalStateException("Cannot open $uri")
 
-    private fun writeBundle(session: PackageInstaller.Session, bundle: Uri) {
+    private fun writeBundle(session: PackageInstaller.Session, bundle: Uri, progress: Progress?) {
         var wrote = 0
         ZipInputStream(openInput(bundle).buffered()).use { zip ->
             var entry = zip.nextEntry
@@ -78,7 +100,7 @@ class ApkInstaller(private val context: Context) {
                 val name = entry.name.substringAfterLast('/')
                 if (!entry.isDirectory && name.endsWith(".apk", ignoreCase = true)) {
                     // size unknown for zip entries → use -1 so PackageInstaller streams it.
-                    writeEntry(session, "$wrote-$name", zip, -1L)
+                    writeEntry(session, "$wrote-$name", zip, -1L, progress)
                     wrote++
                 }
                 zip.closeEntry()
@@ -88,9 +110,25 @@ class ApkInstaller(private val context: Context) {
         require(wrote > 0) { "No APK entries found in bundle" }
     }
 
-    private fun writeEntry(session: PackageInstaller.Session, name: String, input: InputStream, size: Long) {
+    private fun writeEntry(
+        session: PackageInstaller.Session,
+        name: String,
+        input: InputStream,
+        size: Long,
+        progress: Progress?,
+    ) {
         session.openWrite(name, 0, size).use { out ->
-            input.copyTo(out)
+            if (progress == null) {
+                input.copyTo(out)
+            } else {
+                val buffer = ByteArray(64 * 1024)
+                var read = input.read(buffer)
+                while (read >= 0) {
+                    out.write(buffer, 0, read)
+                    progress.add(read)
+                    read = input.read(buffer)
+                }
+            }
             session.fsync(out)
         }
     }

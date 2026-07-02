@@ -6,17 +6,22 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.pwhs.core.data.ApkMetadataReader
 import app.pwhs.core.data.DownloadsApkScanner
+import app.pwhs.core.data.local.SharedPrefsKeys
+import app.pwhs.core.data.local.dataStore
 import app.pwhs.core.domain.ApkFile
 import app.pwhs.core.install.ApkInstaller
+import app.pwhs.core.install.RootInstaller
 import app.pwhs.core.receiver.ReceivedApk
 import app.pwhs.core.receiver.ReceiverStatus
 import app.pwhs.core.receiver.TvReceiverState
+import app.pwhs.core.util.RootShell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +32,7 @@ class ReceiveViewModel(application: Application) : AndroidViewModel(application)
     private val context = application.applicationContext
     private val metadataReader = ApkMetadataReader(context)
     private val installer = ApkInstaller(context)
+    private val rootInstaller = RootInstaller(context)
 
     val status: StateFlow<ReceiverStatus> = TvReceiverState.status
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReceiverStatus.Stopped)
@@ -43,8 +49,22 @@ class ReceiveViewModel(application: Application) : AndroidViewModel(application)
     private val _installingLabel = MutableStateFlow<String?>(null)
     val installingLabel: StateFlow<String?> = _installingLabel.asStateFlow()
 
-    private val _installResult = MutableStateFlow<String?>(null)
-    val installResult: StateFlow<String?> = _installResult.asStateFlow()
+    /** 0f..1f while the session is being written, null when the total size is unknown/idle. */
+    private val _installProgress = MutableStateFlow<Float?>(null)
+    val installProgress: StateFlow<Float?> = _installProgress.asStateFlow()
+
+    private val _installResult = MutableStateFlow<InstallOutcome?>(null)
+    val installResult: StateFlow<InstallOutcome?> = _installResult.asStateFlow()
+
+    /** Kept so the result overlay can offer a one-tap Retry without re-picking the APK. */
+    private var lastInstall: InstallRequest? = null
+
+    sealed interface InstallOutcome {
+        data class Success(val label: String, val silent: Boolean = false) : InstallOutcome
+        data class Failure(val label: String, val message: String) : InstallOutcome
+    }
+
+    private data class InstallRequest(val uri: Uri, val isBundle: Boolean, val label: String, val sizeBytes: Long)
 
     init {
         viewModelScope.launch {
@@ -75,18 +95,46 @@ class ReceiveViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun install(uri: Uri, isBundle: Boolean, label: String) {
+    fun install(uri: Uri, isBundle: Boolean, label: String, sizeBytes: Long) {
         if (_installingLabel.value != null) return
+        lastInstall = InstallRequest(uri, isBundle, label, sizeBytes)
         viewModelScope.launch {
+            _installResult.value = null
             _installingLabel.value = label
-            _installResult.value = "Installing $label..."
-            val result = withContext(Dispatchers.IO) { installer.install(uri, isBundle) }
+            _installProgress.value = if (sizeBytes > 0) 0f else null
+            // Prefer the silent root path on rooted boxes (skips the D-pad-hostile system dialog);
+            // fall back to the PackageInstaller session when root is off or unavailable.
+            val silentPref = runCatching {
+                context.dataStore.data.first()[SharedPrefsKeys.ROOT_SILENT_INSTALL]
+            }.getOrNull() ?: true
+            val useRoot = silentPref && RootShell.isAvailable()
+            val result = withContext(Dispatchers.IO) {
+                if (useRoot) {
+                    rootInstaller.install(uri, isBundle) { f -> _installProgress.value = f }
+                } else {
+                    installer.install(uri, isBundle, totalBytes = sizeBytes) { written, total ->
+                        if (total > 0) _installProgress.value = (written.toFloat() / total).coerceIn(0f, 1f)
+                    }
+                }
+            }
             _installingLabel.value = null
+            _installProgress.value = null
             _installResult.value = when (result) {
-                is ApkInstaller.Result.Success -> "Installed $label ✓"
-                is ApkInstaller.Result.Failure -> "Failed: ${result.message}"
+                is ApkInstaller.Result.Success -> {
+                    _pendingApk.value = null // received APK is installed — clear the hero so the QR returns
+                    InstallOutcome.Success(label, silent = useRoot)
+                }
+                is ApkInstaller.Result.Failure -> InstallOutcome.Failure(label, result.message)
             }
         }
+    }
+
+    fun retryInstall() {
+        lastInstall?.let { install(it.uri, it.isBundle, it.label, it.sizeBytes) }
+    }
+
+    fun clearInstallResult() {
+        _installResult.value = null
     }
 
     fun dismissPending() {

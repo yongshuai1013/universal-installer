@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -99,6 +100,7 @@ fun ReceiveScreen(
     val isScanning by viewModel.isScanning.collectAsState()
     val installResult by viewModel.installResult.collectAsState()
     val installingLabel by viewModel.installingLabel.collectAsState()
+    val installProgress by viewModel.installProgress.collectAsState()
     
     val storageStats = remember { StorageUtil.getStorageStats() }
     var selectedApk by remember { mutableStateOf<TvApkItem?>(null) } 
@@ -141,18 +143,19 @@ fun ReceiveScreen(
             apkItem = apk,
             isInstalling = installingLabel != null,
             onDismiss = { selectedApk = null },
-            onInstall = { uri, isBundle, label ->
+            onInstall = { uri, isBundle, label, sizeBytes ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
                     openUnknownSources(context)
                 } else {
-                    viewModel.install(uri, isBundle, label)
+                    viewModel.install(uri, isBundle, label, sizeBytes)
                     selectedApk = null
                 }
             }
         )
     }
 
-    Row(modifier = modifier.fillMaxSize().padding(horizontal = 48.dp)) {
+    Box(modifier = modifier.fillMaxSize()) {
+    Row(modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp)) {
         // ── Left Pane: Sidebar Navigation ────────────────────────────────────
         Column(
             modifier = Modifier
@@ -225,6 +228,122 @@ fun ReceiveScreen(
                             }
                         }
                     )
+                }
+            }
+        }
+    }
+
+        // ── Install status overlay (progress while writing · result pill) ────
+        InstallStatusOverlay(
+            installingLabel = installingLabel,
+            progress = installProgress,
+            result = installResult,
+            onRetry = { viewModel.retryInstall() },
+            onDismiss = { viewModel.clearInstallResult() },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun InstallStatusOverlay(
+    installingLabel: String?,
+    progress: Float?,
+    result: ReceiveViewModel.InstallOutcome?,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Success auto-dismisses; a failure lingers so the Retry action stays reachable.
+    LaunchedEffect(result) {
+        if (result is ReceiveViewModel.InstallOutcome.Success) {
+            kotlinx.coroutines.delay(3000)
+            onDismiss()
+        }
+    }
+
+    val visible = installingLabel != null || result != null
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        val shape = RoundedCornerShape(20.dp)
+        val (container, content) = when {
+            installingLabel != null -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurface
+            result is ReceiveViewModel.InstallOutcome.Failure -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+            else -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        }
+        Surface(
+            modifier = Modifier.widthIn(min = 360.dp, max = 720.dp),
+            shape = shape,
+            colors = SurfaceDefaults.colors(containerColor = container, contentColor = content)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
+                when {
+                    installingLabel != null -> {
+                        Text(
+                            stringResource(R.string.tv_receive_installing, installingLabel),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        if (progress != null) {
+                            androidx.compose.material3.LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = content.copy(alpha = 0.2f)
+                            )
+                        } else {
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = content.copy(alpha = 0.2f)
+                            )
+                        }
+                    }
+                    result is ReceiveViewModel.InstallOutcome.Success -> {
+                        Text(
+                            stringResource(
+                                if (result.silent) R.string.tv_receive_installed_silent
+                                else R.string.tv_receive_installed_success,
+                                result.label
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    result is ReceiveViewModel.InstallOutcome.Failure -> {
+                        Text(
+                            stringResource(R.string.tv_receive_failed, result.message),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            val btnShape = CircleShape
+                            Button(
+                                onClick = onRetry,
+                                shape = ButtonDefaults.shape(btnShape),
+                                modifier = Modifier.clip(btnShape)
+                            ) { Text(stringResource(R.string.tv_receive_retry)) }
+                            Button(
+                                onClick = onDismiss,
+                                shape = ButtonDefaults.shape(btnShape),
+                                modifier = Modifier.clip(btnShape),
+                                colors = ButtonDefaults.colors(containerColor = content.copy(alpha = 0.15f), contentColor = content)
+                            ) { Text(stringResource(R.string.tv_receive_dismiss)) }
+                        }
+                    }
                 }
             }
         }
@@ -624,7 +743,7 @@ private fun ApkDetailsDialog(
     apkItem: TvApkItem,
     isInstalling: Boolean,
     onDismiss: () -> Unit,
-    onInstall: (Uri, Boolean, String) -> Unit
+    onInstall: (Uri, Boolean, String, Long) -> Unit
 ) {
     val context = LocalContext.current
     
@@ -725,7 +844,7 @@ private fun ApkDetailsDialog(
 
                 val btnShape = RoundedCornerShape(14.dp)
                 Button(
-                    onClick = { onInstall(uri, isBundle, name) },
+                    onClick = { onInstall(uri, isBundle, name, size) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(btnShape),
