@@ -132,6 +132,11 @@ class ManageViewModel(application: Application) : AndroidViewModel(application) 
         _apps.value = withContext(Dispatchers.IO) { repo.getInstalledApps(includeSystem = true) }
     }
 
+    /** Silent refresh entry point for the UI (e.g. after a system-dialog uninstall completes). */
+    fun refresh() {
+        viewModelScope.launch { reloadSilently() }
+    }
+
     // ── Privileged single-app actions (root) ─────────────────────────────────
 
     fun forceStop(app: InstalledApp) = runAction {

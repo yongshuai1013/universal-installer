@@ -95,6 +95,7 @@ private enum class InstallTab { Receive, LocalFiles }
 @Composable
 fun ReceiveScreen(
     modifier: Modifier = Modifier,
+    active: Boolean = true,
     viewModel: ReceiveViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -214,6 +215,7 @@ fun ReceiveScreen(
                         pending = pending,
                         installingLabel = installingLabel,
                         installFocus = installFocus,
+                        active = active,
                         onInstall = { selectedApk = TvApkItem.Received(it) },
                         onDismissPending = { viewModel.dismissPending() }
                     )
@@ -243,6 +245,7 @@ fun ReceiveScreen(
             installingLabel = installingLabel,
             progress = installProgress,
             result = installResult,
+            active = active,
             onRetry = { viewModel.retryInstall() },
             onDismiss = { viewModel.clearInstallResult() },
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp)
@@ -256,6 +259,7 @@ private fun InstallStatusOverlay(
     installingLabel: String?,
     progress: Float?,
     result: ReceiveViewModel.InstallOutcome?,
+    active: Boolean,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -335,7 +339,9 @@ private fun InstallStatusOverlay(
                         )
                         Spacer(Modifier.height(16.dp))
                         val retryFocus = remember { FocusRequester() }
-                        LaunchedEffect(Unit) { runCatching { retryFocus.requestFocus() } }
+                        // Only grab focus while this tab is on-screen — the screen is kept composed
+                        // when inactive, and a failure arriving in the background must not yank focus.
+                        LaunchedEffect(active) { if (active) runCatching { retryFocus.requestFocus() } }
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             val btnShape = CircleShape
                             Button(
@@ -397,6 +403,7 @@ private fun ReceiveContent(
     pending: ReceivedApk?,
     installingLabel: String?,
     installFocus: FocusRequester,
+    active: Boolean,
     onInstall: (ReceivedApk) -> Unit,
     onDismissPending: () -> Unit
 ) {
@@ -420,6 +427,7 @@ private fun ReceiveContent(
                     apk = pending,
                     isInstalling = installingLabel != null,
                     installFocus = installFocus,
+                    active = active,
                     onInstall = { onInstall(pending) },
                     onDismiss = onDismissPending
                 )
@@ -710,14 +718,17 @@ private fun HeroPendingCard(
     apk: ReceivedApk,
     isInstalling: Boolean,
     installFocus: FocusRequester,
+    active: Boolean,
     onInstall: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val meta = apk.metadata
     val shape = RoundedCornerShape(28.dp)
-    // Land focus on Install now that the button is composed (the crossfade is done).
-    LaunchedEffect(Unit) { runCatching { installFocus.requestFocus() } }
+    // Land focus on Install once the button is composed (crossfade done) — but only while this tab
+    // is on-screen, since the screen is kept composed when inactive and an APK can arrive in the
+    // background. Keyed on [active] so focus also lands if the user switches here afterwards.
+    LaunchedEffect(active) { if (active) runCatching { installFocus.requestFocus() } }
     Surface(
         onClick = onInstall,
         modifier = Modifier

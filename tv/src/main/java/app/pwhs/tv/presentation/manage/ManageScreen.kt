@@ -46,7 +46,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,26 +84,39 @@ import kotlinx.coroutines.delay
 @Composable
 fun ManageScreen(
     modifier: Modifier = Modifier,
+    active: Boolean = true,
     viewModel: ManageViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val actionResult by viewModel.actionResult.collectAsState()
-    var reloadTick by remember { mutableIntStateOf(0) }
     var focusedApp by remember { mutableStateOf<InstalledApp?>(null) }
     var confirm by remember { mutableStateOf<ConfirmAction?>(null) }
     val context = LocalContext.current
 
-    // Default focus: land on the first app once, when the list first appears on this visit,
-    // so the D-pad has a home instead of stranding focus on the rail.
+    // Lands the D-pad on the first app row. See the two effects below for when it fires.
     val firstRowFocus = remember { FocusRequester() }
-    var didRequestFocus by remember { mutableStateOf(false) }
 
     val uninstallLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { reloadTick++ }
+    ) {
+        // A non-root uninstall just finished via the system dialog. Refresh silently (no skeleton
+        // flash) so the list drops the removed app without re-showing the loading state.
+        viewModel.refresh()
+    }
 
-    LaunchedEffect(reloadTick) {
+    // Initial load only — the screen stays composed across tab switches (keep-alive), so this
+    // fires once instead of on every visit; re-entry shows the already-loaded list instantly.
+    LaunchedEffect(Unit) {
         viewModel.loadApps()
+    }
+
+    // Pull focus onto the first row when this tab becomes visible, so the D-pad has a home instead
+    // of being stranded on the rail. Gated on [active] because the screen is kept composed while
+    // off-screen and requestFocus() would otherwise yank focus into a hidden destination.
+    LaunchedEffect(active, uiState.isLoading) {
+        if (active && !uiState.isLoading && uiState.filteredApps.isNotEmpty()) {
+            runCatching { firstRowFocus.requestFocus() }
+        }
     }
 
     LaunchedEffect(uiState.filteredApps, uiState.isLoading) {
@@ -117,15 +129,11 @@ fun ManageScreen(
             fresh != null -> if (fresh != current) focusedApp = fresh
             // Selection dropped out (uninstalled / disabled under the User filter / filtered):
             // re-home the pane AND move D-pad focus back to the list so it isn't stranded on a
-            // control being animated away.
+            // control being animated away — but only while on-screen (see [active] note above).
             else -> {
                 focusedApp = uiState.filteredApps.firstOrNull()
-                if (uiState.filteredApps.isNotEmpty()) runCatching { firstRowFocus.requestFocus() }
+                if (active && uiState.filteredApps.isNotEmpty()) runCatching { firstRowFocus.requestFocus() }
             }
-        }
-        if (!didRequestFocus && uiState.filteredApps.isNotEmpty()) {
-            didRequestFocus = true
-            runCatching { firstRowFocus.requestFocus() }
         }
     }
 
