@@ -12,24 +12,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
+import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
@@ -39,14 +36,27 @@ import app.pwhs.tv.presentation.manage.ManageScreen
 import app.pwhs.tv.presentation.receive.ReceiveScreen
 import app.pwhs.tv.presentation.settings.SettingsScreen
 
+/** Top-level destinations reachable from the side rail. */
+private object TvRoute {
+    const val RECEIVE = "receive"
+    const val MANAGE = "manage"
+    const val SETTINGS = "settings"
+}
+
 /**
- * Top-level TV shell: A completely static side Navigation Rail.
- * Extremely lightweight and performant for low-end TV hardware.
+ * Top-level TV shell: a static side Navigation Rail driving a Navigation Compose [NavHost].
+ *
+ * Tabs are switched with the bottom-nav idiom (`saveState`/`restoreState` + `launchSingleTop`),
+ * so a destination's back-stack entry — and its ViewModel — survives while you're on another tab.
+ * The heavy data (installed apps, local-APK scan) is loaded once by the ViewModels rather than on
+ * every visit, so returning to a tab restores instantly instead of re-querying and flashing a
+ * loading state — that reload-on-every-switch is what made navigation feel janky.
  */
 @Composable
 fun TvApp(modifier: Modifier = Modifier) {
-    // Survives the locale/config-change recreate so the user stays on their current tab.
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route ?: TvRoute.RECEIVE
 
     Box(
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface),
@@ -78,38 +88,34 @@ fun TvApp(modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(32.dp))
 
                 NavigationItem(
-                    selected = tab == 0,
-                    onClick = { tab = 0 },
+                    selected = currentRoute == TvRoute.RECEIVE,
+                    onClick = { navController.switchTab(TvRoute.RECEIVE) },
                     iconRes = R.drawable.ic_apk_install
                 )
                 Spacer(Modifier.height(12.dp))
                 NavigationItem(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
+                    selected = currentRoute == TvRoute.MANAGE,
+                    onClick = { navController.switchTab(TvRoute.MANAGE) },
                     iconRes = R.drawable.ic_delete
                 )
                 Spacer(Modifier.height(12.dp))
                 NavigationItem(
-                    selected = tab == 2,
-                    onClick = { tab = 2 },
+                    selected = currentRoute == TvRoute.SETTINGS,
+                    onClick = { navController.switchTab(TvRoute.SETTINGS) },
                     iconRes = R.drawable.ic_setting
                 )
             }
 
-            // Content Area — all three destinations stay composed once first visited (keep-alive),
-            // so switching tabs is an alpha/focus toggle instead of a full teardown + rebuild +
-            // data reload. That rebuild-and-reload on every switch is what made navigation feel
-            // janky on low-end TV hardware; here the LaunchedEffect keys never reset, so the app
-            // list / QR / storage stats are computed once and simply shown again.
+            // Content Area
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                ScreenSlot(active = tab == 0) {
-                    ReceiveScreen(active = tab == 0, modifier = Modifier.fillMaxSize())
-                }
-                ScreenSlot(active = tab == 1) {
-                    ManageScreen(active = tab == 1, modifier = Modifier.fillMaxSize())
-                }
-                ScreenSlot(active = tab == 2) {
-                    SettingsScreen(modifier = Modifier.fillMaxSize())
+                NavHost(
+                    navController = navController,
+                    startDestination = TvRoute.RECEIVE,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    composable(TvRoute.RECEIVE) { ReceiveScreen(modifier = Modifier.fillMaxSize()) }
+                    composable(TvRoute.MANAGE) { ManageScreen(modifier = Modifier.fillMaxSize()) }
+                    composable(TvRoute.SETTINGS) { SettingsScreen(modifier = Modifier.fillMaxSize()) }
                 }
             }
         }
@@ -117,34 +123,15 @@ fun TvApp(modifier: Modifier = Modifier) {
 }
 
 /**
- * Keeps a destination's composition — and therefore its loaded data, scroll position and focus
- * state — alive across tab switches. The slot composes its [content] the first time it becomes
- * [active] (lazy, so unvisited tabs cost nothing at startup) and never disposes it afterwards.
- *
- * When inactive it is drawn fully transparent and made focus-inert: [canFocus] is false and any
- * D-pad attempt to enter the group is cancelled, so focus can't wander into an off-screen
- * destination. (Explicit `requestFocus()` calls still pierce this, which is why the screens gate
- * their own focus requests on an `active` flag.)
+ * Bottom-nav style tab switch: single top-level entry per tab, with the leaving tab's state saved
+ * and the entered tab's state restored so it comes back exactly as the user left it.
  */
-@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-@Composable
-private fun ScreenSlot(active: Boolean, content: @Composable () -> Unit) {
-    var everActive by remember { mutableStateOf(false) }
-    if (active) everActive = true
-    if (!everActive) return
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .zIndex(if (active) 1f else 0f)
-            .graphicsLayer { alpha = if (active) 1f else 0f }
-            .focusProperties {
-                canFocus = active
-                if (!active) onEnter = { cancelFocus() }
-            }
-            .focusGroup(),
-    ) {
-        content()
+private fun NavController.switchTab(route: String) {
+    if (currentDestination?.route == route) return
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 

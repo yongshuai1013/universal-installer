@@ -2088,7 +2088,7 @@ class InstallViewModel(
                 SplitType.Libs -> {
                     val normalized = e.name.replace('-', '_').lowercase()
                     val p = abiPriority[normalized] ?: Int.MAX_VALUE
-                    val isBest = p == bestLibsPriority && bestLibsPriority != null
+                    val isBest = p == bestLibsPriority
                     val bestAbi = abiPriority.entries.find { it.value == bestLibsPriority }?.key
                     val containsBest = bestAbi != null && normalized.contains(bestAbi)
                     isBest || containsBest

@@ -46,7 +46,7 @@ internal fun StorageCard(modifier: Modifier = Modifier) {
         ),
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row {
                 Icon(
                     imageVector = Icons.Rounded.Storage,
                     contentDescription = null,
@@ -60,6 +60,8 @@ internal fun StorageCard(modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(
                         R.string.install_storage_value,

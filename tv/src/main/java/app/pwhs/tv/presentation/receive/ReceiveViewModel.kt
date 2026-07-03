@@ -77,8 +77,18 @@ class ReceiveViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** True once a scan has been kicked off, so tab revisits don't redundantly re-scan. */
+    private var hasScannedOnce = false
+
+    /** Scan only if we never have — used on screen entry; the Rescan button calls [scanLocalApks]. */
+    fun scanLocalApksIfNeeded() {
+        if (hasScannedOnce) return
+        scanLocalApks()
+    }
+
     fun scanLocalApks() {
         if (_isScanning.value) return
+        hasScannedOnce = true
         viewModelScope.launch {
             _isScanning.value = true
             val files = withContext(Dispatchers.IO) { DownloadsApkScanner.scan(context) }

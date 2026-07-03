@@ -117,6 +117,10 @@ class ManageViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         viewModelScope.launch { _rootAvailable.value = RootShell.isAvailable() }
+        // Load once at ViewModel creation. The VM is retained in its Navigation back-stack entry
+        // across tab switches, so revisiting Manage reuses this list instead of re-querying the
+        // PackageManager and re-flashing the loading skeleton on every visit.
+        loadApps()
     }
 
     fun loadApps() {
