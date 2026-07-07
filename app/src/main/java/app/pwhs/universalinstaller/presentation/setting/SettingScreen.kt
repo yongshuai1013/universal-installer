@@ -96,6 +96,7 @@ fun SettingScreen(
         uiState = uiState,
         onInstallModeChanged = viewModel::setInstallMode,
         onVirusTotalKeyChanged = viewModel::setVirusTotalApiKey,
+        onStrictVirusTotalCheckChanged = viewModel::setStrictVirusTotalCheck,
         onShizukuOptionChanged = viewModel::setShizukuOption,
         onShizukuInstallerChanged = viewModel::setShizukuInstallerPackageName,
         onDeleteApkChanged = viewModel::setDeleteApkAfterInstall,
@@ -127,6 +128,7 @@ private fun SettingUi(
     uiState: SettingUiState = SettingUiState(),
     onInstallModeChanged: (InstallMode) -> Unit = {},
     onVirusTotalKeyChanged: (String) -> Unit = {},
+    onStrictVirusTotalCheckChanged: (Boolean) -> Unit = {},
     onShizukuOptionChanged: (Preferences.Key<Boolean>, Boolean) -> Unit = { _, _ -> },
     onShizukuInstallerChanged: (String) -> Unit = {},
     onDeleteApkChanged: (Boolean) -> Unit = {},
@@ -652,6 +654,12 @@ private fun SettingUi(
                             leadingIcon = { Icon(Icons.Rounded.Key, null, tint = MaterialTheme.colorScheme.primary) },
                             placeholder = { Text(stringResource(R.string.setting_vt_api_key_placeholder)) },
                             singleLine = true,
+                        )
+                        SwitchPreference(
+                            title = stringResource(R.string.setting_vt_strict_check_title),
+                            subtitle = stringResource(R.string.setting_vt_strict_check_summary),
+                            checked = uiState.strictVirusTotalCheck,
+                            onCheckedChange = onStrictVirusTotalCheckChanged
                         )
                     }
                 }

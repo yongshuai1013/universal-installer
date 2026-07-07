@@ -45,9 +45,12 @@ sealed interface InstallRisk {
 
     /** VirusTotal flagged the APK as suspicious. */
     data class VtSuspicious(val engineCount: Int) : InstallRisk
+
+    /** Strict mode: APK was not scanned by VirusTotal. */
+    data object VtUnscanned : InstallRisk
 }
 
-fun detectInstallRisks(apkInfo: ApkInfo): List<InstallRisk> {
+fun detectInstallRisks(apkInfo: ApkInfo, strictVirusTotal: Boolean = false): List<InstallRisk> {
     val risks = mutableListOf<InstallRisk>()
     val installedCode = apkInfo.installedVersionCode
     if (installedCode != null && installedCode > 0 && apkInfo.versionCode < installedCode) {
@@ -56,10 +59,12 @@ fun detectInstallRisks(apkInfo: ApkInfo): List<InstallRisk> {
             newVersionName = apkInfo.versionName.ifBlank { "?" },
         )
     }
-    when (apkInfo.vtResult?.status) {
+    when (val status = apkInfo.vtResult?.status) {
         VtStatus.MALICIOUS -> risks += InstallRisk.VtMalicious(apkInfo.vtResult.malicious)
         VtStatus.SUSPICIOUS -> risks += InstallRisk.VtSuspicious(apkInfo.vtResult.suspicious)
-        else -> Unit
+        VtStatus.CLEAN -> Unit
+        null -> if (strictVirusTotal) risks += InstallRisk.VtUnscanned
+        else -> if (strictVirusTotal) risks += InstallRisk.VtUnscanned
     }
     return risks
 }
@@ -128,6 +133,8 @@ private fun RiskRow(risk: InstallRisk) {
             stringResource(R.string.dialog_risk_vt_malicious, risk.engineCount)
         is InstallRisk.VtSuspicious -> Icons.Rounded.Warning to
             stringResource(R.string.dialog_risk_vt_suspicious, risk.engineCount)
+        is InstallRisk.VtUnscanned -> Icons.Rounded.Warning to
+            stringResource(R.string.dialog_risk_vt_unscanned)
     }
     Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
         Icon(

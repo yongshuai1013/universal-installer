@@ -343,6 +343,9 @@ internal fun ApkInfoContent(
         if (isExpanded) {
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
         }
+        val isScanCompleted = apkInfo.vtResult?.status in setOf(VtStatus.CLEAN, VtStatus.MALICIOUS, VtStatus.SUSPICIOUS)
+        val isScanning = apkInfo.vtResult?.status in setOf(VtStatus.SCANNING, VtStatus.UPLOADING, VtStatus.QUEUED, VtStatus.ANALYZING)
+        
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -369,17 +372,46 @@ internal fun ApkInfoContent(
                 ) {
                     Text(cancelText ?: if (isExpanded && startCompact) stringResource(R.string.dialog_back_btn) else stringResource(R.string.cancel))
                 }
-                Button(
-                    onClick = onInstall,
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = if (isDowngrade) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
-                ) {
-                    if (confirmText == null) {
-                        Icon(Icons.Rounded.InstallMobile, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
+                
+                if (isScanCompleted) {
+                    Button(
+                        onClick = onInstall,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = if (isDowngrade) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
+                    ) {
+                        if (confirmText == null) {
+                            Icon(Icons.Rounded.InstallMobile, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(confirmText ?: if (isDowngrade) stringResource(R.string.dialog_downgrade_btn) else stringResource(R.string.txt_install))
                     }
-                    Text(confirmText ?: if (isDowngrade) stringResource(R.string.dialog_downgrade_btn) else stringResource(R.string.txt_install))
+                } else {
+                    Button(
+                        onClick = onCheckVirusTotal,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium,
+                        enabled = !isScanning
+                    ) {
+                        if (isScanning) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.scanning_progress))
+                        } else {
+                            Icon(Icons.Rounded.Security, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.scan_virustotal_btn))
+                        }
+                    }
+                }
+            }
+            
+            if (!isScanCompleted) {
+                TextButton(
+                    onClick = onInstall,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.skip_and_install_btn))
                 }
             }
         }
@@ -532,11 +564,6 @@ private fun VirusTotalCard(vt: VtResult?, fileSizeBytes: Long, sha256: String = 
             if (hasResult && vt != null) {
                 Spacer(Modifier.height(12.dp))
                 VtBreakdownSection(vt = vt, warningColor = extendedColors.warning)
-            }
-            TextButton(onClick = onCheck, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Rounded.CloudUpload, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(if (status == null) stringResource(R.string.apk_info_vt_check_button) else stringResource(R.string.apk_info_vt_rescan_button))
             }
         }
     }

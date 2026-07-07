@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">साइडलोड / अज्ञात स्रोत</string>
     <string name="installer_engine_root_request">रूट एक्सेस देने के लिए टैप करें</string>
     <string name="dialog_failed_fallback_install">सिस्टम इंस्टॉलर के माध्यम से इंस्टॉल करें</string>
+    <string name="dialog_risk_vt_unscanned">VirusTotal स्कैन पूरा नहीं हुआ</string>
+    <string name="scan_virustotal_btn">VirusTotal से स्कैन करें</string>
+    <string name="skip_and_install_btn">छोड़ें और इंस्टॉल करें</string>
+    <string name="scanning_progress">स्कैन किया जा रहा है…</string>
+    <string name="setting_vt_strict_check_title">सख्त VirusTotal जांच</string>
+    <string name="setting_vt_strict_check_summary">अगर फ़ाइल को स्कैन नहीं किया गया है, तो इंस्टॉल करने से पहले चेतावनी दें</string>
 </resources>

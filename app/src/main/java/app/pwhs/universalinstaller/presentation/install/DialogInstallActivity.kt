@@ -217,6 +217,7 @@ class DialogInstallActivity : ComponentActivity() {
             val prefs by context.dataStore.data.collectAsState(initial = null)
             val autoOpenAfterInstall = prefs?.get(PreferencesKeys.AUTO_OPEN_AFTER_INSTALL) ?: false
             val autoConfirmExternalInstall = prefs?.get(PreferencesKeys.AUTO_CONFIRM_EXTERNAL_INSTALL) ?: false
+            val strictVirusTotalCheck = prefs?.get(PreferencesKeys.STRICT_VIRUSTOTAL_CHECK) ?: false
 
             // Tracks whether we've actually observed the captured session in the repository.
             // The session is added inside controller.install() AFTER createSession() suspends,
@@ -259,7 +260,7 @@ class DialogInstallActivity : ComponentActivity() {
             }
             val handleInstallTap = {
                 val info = uiState.pendingApkInfo
-                val risks = if (info != null) detectInstallRisks(info) else emptyList()
+                val risks = if (info != null) detectInstallRisks(info, strictVirusTotalCheck) else emptyList()
                 if (risks.isNotEmpty()) {
                     pendingRisks = risks
                 } else {

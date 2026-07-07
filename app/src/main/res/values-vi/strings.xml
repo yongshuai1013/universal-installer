@@ -465,8 +465,12 @@
     <string name="dialog_risk_proceed_warn">Vẫn cài đặt</string>
     <string name="dialog_risk_proceed_severe">Cài đặt và tự chịu rủi ro</string>
     <string name="dialog_risk_downgrade">Hạ cấp: %1$s → %2$s. Dữ liệu ứng dụng hiện tại có thể bị xóa.</string>
-    <string name="dialog_risk_vt_malicious">VirusTotal: %1$d công cụ đánh dấu tệp này là độc hại.</string>
-    <string name="dialog_risk_vt_suspicious">VirusTotal: %1$d công cụ đánh dấu tệp này là đáng ngờ.</string>
+    <string name="dialog_risk_vt_malicious">VirusTotal: %1$d công cụ đánh giá tệp này là độc hại.</string>
+    <string name="dialog_risk_vt_suspicious">VirusTotal: %1$d công cụ đánh giá tệp này là đáng ngờ.</string>
+    <string name="dialog_risk_vt_unscanned">Chưa quét VirusTotal</string>
+    <string name="scan_virustotal_btn">Quét VirusTotal</string>
+    <string name="skip_and_install_btn">Bỏ qua &amp; Cài đặt</string>
+    <string name="scanning_progress">Đang quét…</string>
     <string name="dialog_risk_footer">Chỉ tiếp tục nếu bạn tin tưởng nguồn của tệp này.</string>
     <string name="dialog_menu_remember_for_app">Ghi nhớ cho ứng dụng này</string>
     <string name="dialog_menu_remember_for_app_sub">Sử dụng nguồn cài đặt này mỗi khi cài đặt ứng dụng này.</string>
@@ -668,6 +672,8 @@
     <string name="setting_section_advanced">Nâng cao</string>
     <string name="setting_vt_api_key_title">Khóa API VirusTotal</string>
     <string name="setting_vt_api_key_placeholder">Dán khóa API vào đây…</string>
+    <string name="setting_vt_strict_check_title">Kiểm tra VirusTotal nghiêm ngặt</string>
+    <string name="setting_vt_strict_check_summary">Cảnh báo trước khi cài đặt nếu tệp chưa được quét</string>
     <string name="setting_diagnostics_title">Chẩn đoán</string>
     <string name="setting_installer_package_title">Gói cài đặt</string>
     <string name="backup_settings_title">Cài đặt sao lưu</string>

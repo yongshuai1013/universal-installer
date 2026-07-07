@@ -709,4 +709,10 @@
     <string name="dir_picker_grant_action">Conceder acesso</string>
     <string name="installer_engine_root_request">Toque para conceder acesso root</string>
     <string name="dialog_failed_fallback_install">Instalar pelo instalador do sistema</string>
+    <string name="dialog_risk_vt_unscanned">Verificação do VirusTotal não concluída</string>
+    <string name="scan_virustotal_btn">Verificar no VirusTotal</string>
+    <string name="skip_and_install_btn">Ignorar e instalar</string>
+    <string name="scanning_progress">Verificando…</string>
+    <string name="setting_vt_strict_check_title">Verificação rigorosa do VirusTotal</string>
+    <string name="setting_vt_strict_check_summary">Avisar antes de instalar se o arquivo não tiver sido verificado</string>
 </resources>

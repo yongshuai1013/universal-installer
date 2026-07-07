@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">تحميل جانبي / مصدر غير معروف</string>
     <string name="installer_engine_root_request">اضغط لمنح صلاحيات الروت</string>
     <string name="dialog_failed_fallback_install">التثبيت عبر مثبت النظام</string>
+    <string name="dialog_risk_vt_unscanned">فحص VirusTotal لم يكتمل</string>
+    <string name="scan_virustotal_btn">فحص باستخدام VirusTotal</string>
+    <string name="skip_and_install_btn">تخطي وتثبيت</string>
+    <string name="scanning_progress">جارٍ الفحص…</string>
+    <string name="setting_vt_strict_check_title">فحص VirusTotal صارم</string>
+    <string name="setting_vt_strict_check_summary">التحذير قبل التثبيت إذا لم يتم فحص الملف</string>
 </resources>

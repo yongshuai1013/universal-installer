@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Elle yüklendi / Bilinmeyen kaynak</string>
     <string name="installer_engine_root_request">Root erişimi vermek için dokunun</string>
     <string name="dialog_failed_fallback_install">Sistem Yükleyicisi aracılığıyla yükle</string>
+    <string name="dialog_risk_vt_unscanned">VirusTotal taraması tamamlanmadı</string>
+    <string name="scan_virustotal_btn">VirusTotal\'da Tara</string>
+    <string name="skip_and_install_btn">Atla ve Yükle</string>
+    <string name="scanning_progress">Taranıyor…</string>
+    <string name="setting_vt_strict_check_title">Sıkı VirusTotal kontrolü</string>
+    <string name="setting_vt_strict_check_summary">Dosya taranmadıysa yüklemeden önce uyar</string>
 </resources>

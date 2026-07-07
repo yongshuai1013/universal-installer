@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">사이드로드 / 알 수 없는 소스</string>
     <string name="installer_engine_root_request">탭하여 루트 권한 부여</string>
     <string name="dialog_failed_fallback_install">시스템 설치 프로그램을 통해 설치</string>
+    <string name="dialog_risk_vt_unscanned">VirusTotal 검사가 완료되지 않았습니다</string>
+    <string name="scan_virustotal_btn">VirusTotal로 검사</string>
+    <string name="skip_and_install_btn">건너뛰고 설치</string>
+    <string name="scanning_progress">검사 중…</string>
+    <string name="setting_vt_strict_check_title">엄격한 VirusTotal 검사</string>
+    <string name="setting_vt_strict_check_summary">파일이 검사되지 않은 경우 설치하기 전에 경고</string>
 </resources>

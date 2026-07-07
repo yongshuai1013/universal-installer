@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Sideload / Sumber tidak dikenal</string>
     <string name="installer_engine_root_request">Ketuk untuk memberikan akses root</string>
     <string name="dialog_failed_fallback_install">Instal melalui Penginstal Sistem</string>
+    <string name="dialog_risk_vt_unscanned">Pemindaian VirusTotal belum selesai</string>
+    <string name="scan_virustotal_btn">Pindai dengan VirusTotal</string>
+    <string name="skip_and_install_btn">Lewati &amp; Instal</string>
+    <string name="scanning_progress">Memindai…</string>
+    <string name="setting_vt_strict_check_title">Pemeriksaan ketat VirusTotal</string>
+    <string name="setting_vt_strict_check_summary">Beri peringatan sebelum menginstal jika file belum dipindai</string>
 </resources>

@@ -91,12 +91,19 @@ fun InstallScreen(
         }
     }.collectAsState(initial = true)
 
+    val strictVirusTotalCheck by remember(context) {
+        context.dataStore.data.map {
+            it[PreferencesKeys.STRICT_VIRUSTOTAL_CHECK] ?: false
+        }
+    }.collectAsState(initial = false)
+
     // Risk consent gate — populated when the user taps Install on a downgrade or
     // a VirusTotal-flagged APK. We render an AlertDialog over the rest of the screen
     // and only proceed to the biometric gate + confirmInstall after they acknowledge.
     var pendingRisks by remember { mutableStateOf<List<app.pwhs.universalinstaller.presentation.install.dialog.InstallRisk>>(emptyList()) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    val proceedWithBiometric: () -> Unit = {
+    val startBiometricFlow: (onSuccess: () -> Unit) -> Unit = { onSuccess ->
         val activity = context as? androidx.fragment.app.FragmentActivity
         if (activity != null) {
             BiometricGate.authenticate(
@@ -104,11 +111,11 @@ fun InstallScreen(
                 enabled = installGateEnabled,
                 title = resource.getString(R.string.biometric_install_title),
                 subtitle = resource.getString(R.string.biometric_install_sub),
-                onSuccess = viewModel::confirmInstall,
+                onSuccess = onSuccess,
                 onCancel = viewModel::dismissPendingInstall,
             )
         } else {
-            viewModel.confirmInstall()
+            onSuccess()
         }
     }
 
@@ -117,10 +124,15 @@ fun InstallScreen(
             risks = pendingRisks,
             onConfirm = {
                 pendingRisks = emptyList()
-                proceedWithBiometric()
+                val action = pendingAction
+                pendingAction = null
+                if (action != null) {
+                    startBiometricFlow(action)
+                }
             },
             onCancel = {
                 pendingRisks = emptyList()
+                pendingAction = null
                 viewModel.dismissPendingInstall()
             },
         )
@@ -143,12 +155,13 @@ fun InstallScreen(
             // rather than a surprise after fingerprint auth completes.
             val info = uiState.pendingApkInfo
             val risks = if (info != null) {
-                app.pwhs.universalinstaller.presentation.install.dialog.detectInstallRisks(info)
+                app.pwhs.universalinstaller.presentation.install.dialog.detectInstallRisks(info, strictVirusTotalCheck)
             } else emptyList()
             if (risks.isNotEmpty()) {
                 pendingRisks = risks
+                pendingAction = viewModel::confirmInstall
             } else {
-                proceedWithBiometric()
+                startBiometricFlow(viewModel::confirmInstall)
             }
         },
         onDismissPreview = viewModel::dismissPendingInstall,
@@ -172,7 +185,22 @@ fun InstallScreen(
         onBatchPicked = { uris -> viewModel.parseBatch(context, uris) },
         onBatchToggleEntry = viewModel::toggleBatchSelection,
         onBatchToggleAll = viewModel::setBatchAllSelected,
-        onBatchConfirm = viewModel::confirmBatchInstall,
+        onBatchConfirm = {
+            val ready = uiState.batchState as? BatchInstallState.Ready
+            if (ready != null) {
+                val picked = ready.entries.filter { it.selected && it.splitUris.isNotEmpty() }
+                val risks = picked.flatMap { 
+                    app.pwhs.universalinstaller.presentation.install.dialog.detectInstallRisks(it.apkInfo, strictVirusTotalCheck) 
+                }.distinct()
+                
+                if (risks.isNotEmpty()) {
+                    pendingRisks = risks
+                    pendingAction = viewModel::confirmBatchInstall
+                } else {
+                    viewModel.confirmBatchInstall()
+                }
+            }
+        },
         onBatchDismiss = viewModel::dismissBatchInstall,
         onSkipBatchParse = viewModel::skipBatchParseAndInstall,
         onSkipParseSingle = viewModel::skipParseAndInstallSingle,

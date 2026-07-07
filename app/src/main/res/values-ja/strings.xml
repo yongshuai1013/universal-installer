@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">サイドロード / 不明なソース</string>
     <string name="installer_engine_root_request">タップしてrootアクセスを許可</string>
     <string name="dialog_failed_fallback_install">システムインストーラー経由でインストール</string>
+    <string name="dialog_risk_vt_unscanned">VirusTotal のスキャンが完了していません</string>
+    <string name="scan_virustotal_btn">VirusTotal でスキャン</string>
+    <string name="skip_and_install_btn">スキップしてインストール</string>
+    <string name="scanning_progress">スキャン中…</string>
+    <string name="setting_vt_strict_check_title">厳格な VirusTotal チェック</string>
+    <string name="setting_vt_strict_check_summary">ファイルがスキャンされていない場合は、インストール前に警告する</string>
 </resources>

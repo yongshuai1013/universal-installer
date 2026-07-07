@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Sideloaded / Άγνωστη πηγή</string>
     <string name="installer_engine_root_request">Πατήστε για εκχώρηση πρόσβασης root</string>
     <string name="dialog_failed_fallback_install">Εγκατάσταση μέσω προγράμματος εγκατάστασης συστήματος</string>
+    <string name="dialog_risk_vt_unscanned">Η σάρωση VirusTotal δεν ολοκληρώθηκε</string>
+    <string name="scan_virustotal_btn">Σάρωση VirusTotal</string>
+    <string name="skip_and_install_btn">Παράλειψη και Εγκατάσταση</string>
+    <string name="scanning_progress">Γίνεται σάρωση…</string>
+    <string name="setting_vt_strict_check_title">Αυστηρός έλεγχος VirusTotal</string>
+    <string name="setting_vt_strict_check_summary">Προειδοποίηση πριν την εγκατάσταση εάν το αρχείο δεν έχει σαρωθεί</string>
 </resources>

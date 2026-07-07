@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Sideloaded / Unbekannte Quelle</string>
     <string name="installer_engine_root_request">Tippen, um Root-Zugriff zu gewähren</string>
     <string name="dialog_failed_fallback_install">Über System-Installationsprogramm installieren</string>
+    <string name="dialog_risk_vt_unscanned">VirusTotal-Scan nicht abgeschlossen</string>
+    <string name="scan_virustotal_btn">Mit VirusTotal scannen</string>
+    <string name="skip_and_install_btn">Überspringen &amp; Installieren</string>
+    <string name="scanning_progress">Wird gescannt…</string>
+    <string name="setting_vt_strict_check_title">Strenger VirusTotal-Check</string>
+    <string name="setting_vt_strict_check_summary">Vor der Installation warnen, wenn die Datei nicht gescannt wurde</string>
 </resources>

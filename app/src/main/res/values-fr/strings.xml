@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Installé manuellement / Source inconnue</string>
     <string name="installer_engine_root_request">Appuyez pour accorder l\'accès root</string>
     <string name="dialog_failed_fallback_install">Installer via le programme d\'installation du système</string>
+    <string name="dialog_risk_vt_unscanned">Analyse VirusTotal non terminée</string>
+    <string name="scan_virustotal_btn">Analyser avec VirusTotal</string>
+    <string name="skip_and_install_btn">Ignorer et installer</string>
+    <string name="scanning_progress">Analyse en cours…</string>
+    <string name="setting_vt_strict_check_title">Vérification stricte VirusTotal</string>
+    <string name="setting_vt_strict_check_summary">Avertir avant l\'installation si le fichier n\'a pas été analysé</string>
 </resources>

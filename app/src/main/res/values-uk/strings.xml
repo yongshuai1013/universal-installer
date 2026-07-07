@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Завантажено вручну / Невідоме джерело</string>
     <string name="installer_engine_root_request">Натисніть, щоб надати root-доступ</string>
     <string name="dialog_failed_fallback_install">Встановити через системний інсталятор</string>
+    <string name="dialog_risk_vt_unscanned">Перевірка VirusTotal не завершена</string>
+    <string name="scan_virustotal_btn">Перевірити у VirusTotal</string>
+    <string name="skip_and_install_btn">Пропустити та встановити</string>
+    <string name="scanning_progress">Перевірка…</string>
+    <string name="setting_vt_strict_check_title">Сувора перевірка VirusTotal</string>
+    <string name="setting_vt_strict_check_summary">Попереджати перед встановленням, якщо файл не був перевірений</string>
 </resources>

@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Загружено вручную / Неизвестный источник</string>
     <string name="installer_engine_root_request">Нажмите, чтобы предоставить root-доступ</string>
     <string name="dialog_failed_fallback_install">Установить через системный установщик</string>
+    <string name="dialog_risk_vt_unscanned">Проверка VirusTotal не завершена</string>
+    <string name="scan_virustotal_btn">Проверить в VirusTotal</string>
+    <string name="skip_and_install_btn">Пропустить и установить</string>
+    <string name="scanning_progress">Проверка…</string>
+    <string name="setting_vt_strict_check_title">Строгая проверка VirusTotal</string>
+    <string name="setting_vt_strict_check_summary">Предупреждать перед установкой, если файл не был проверен</string>
 </resources>

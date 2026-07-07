@@ -56,6 +56,7 @@ object PreferencesKeys {
     val USE_ROOT = booleanPreferencesKey("use_root")
     val INSTALL_USER_ID = intPreferencesKey("install_user_id")
     val VIRUSTOTAL_API_KEY = stringPreferencesKey("virustotal_api_key")
+    val STRICT_VIRUSTOTAL_CHECK = booleanPreferencesKey("strict_virustotal_check")
     val DELETE_APK_AFTER_INSTALL = booleanPreferencesKey("delete_apk_after_install")
 
     /** Open the app automatically after a successful install (with a 3-second cancellable countdown). */
@@ -207,6 +208,7 @@ data class SettingUiState(
     val useShizuku: Boolean = false,
     val useRoot: Boolean = false,
     val virusTotalApiKey: String = "",
+    val strictVirusTotalCheck: Boolean = false,
     val deleteApkAfterInstall: Boolean = false,
     val autoOpenAfterInstall: Boolean = false,
     val shizukuState: ShizukuState = ShizukuState.NOT_INSTALLED,
@@ -422,6 +424,12 @@ class SettingViewModel(
     fun setVirusTotalApiKey(key: String) {
         viewModelScope.launch {
             dataStore.edit { prefs -> prefs[PreferencesKeys.VIRUSTOTAL_API_KEY] = key }
+        }
+    }
+
+    fun setStrictVirusTotalCheck(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { prefs -> prefs[PreferencesKeys.STRICT_VIRUSTOTAL_CHECK] = enabled }
         }
     }
 
@@ -731,12 +739,13 @@ class SettingViewModel(
                     (prefs[PreferencesKeys.BIOMETRIC_LOCK_UNINSTALL] ?: false)
         },
         dataStore.data.map { prefs ->
-            // Flags: dialog-mode, auto-open, auto-confirm, and show-download-tab
+            // Flags: dialog-mode, auto-open, auto-confirm, and show-download-tab, strict-vt
             listOf(
                 prefs[PreferencesKeys.DIALOG_INSTALL_MODE] ?: true,
                 prefs[PreferencesKeys.AUTO_OPEN_AFTER_INSTALL] ?: false,
                 prefs[PreferencesKeys.AUTO_CONFIRM_EXTERNAL_INSTALL] ?: false,
-                prefs[PreferencesKeys.SHOW_DOWNLOAD_TAB] ?: true
+                prefs[PreferencesKeys.SHOW_DOWNLOAD_TAB] ?: true,
+                prefs[PreferencesKeys.STRICT_VIRUSTOTAL_CHECK] ?: false
             )
         },
         dataStore.data.map { prefs ->
@@ -769,6 +778,7 @@ class SettingViewModel(
         val autoOpen = interfaceFlags[1]
         val autoConfirm = interfaceFlags[2]
         val showDownload = interfaceFlags[3]
+        val strictVirusTotal = interfaceFlags[4]
         @Suppress("UNCHECKED_CAST")
         val extractorAndProfiles = flows[12] as List<String>
         val extractorPath = extractorAndProfiles[0]
@@ -797,6 +807,7 @@ class SettingViewModel(
             useShizuku = useShizuku,
             useRoot = useRoot && (rootState == RootState.READY || rootState == RootState.UNKNOWN),
             virusTotalApiKey = vtKey,
+            strictVirusTotalCheck = strictVirusTotal,
             deleteApkAfterInstall = deleteApk,
             autoOpenAfterInstall = autoOpen,
             shizukuState = shizukuState,

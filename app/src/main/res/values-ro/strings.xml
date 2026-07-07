@@ -709,4 +709,10 @@
     <string name="manage_action_installer_source_sub">Încărcat manual / Sursă necunoscută</string>
     <string name="installer_engine_root_request">Apăsați pentru a acorda acces root</string>
     <string name="dialog_failed_fallback_install">Instalați prin programul de instalare a sistemului</string>
+    <string name="dialog_risk_vt_unscanned">Scanarea VirusTotal nu a fost finalizată</string>
+    <string name="scan_virustotal_btn">Scanați cu VirusTotal</string>
+    <string name="skip_and_install_btn">Ignorați și instalați</string>
+    <string name="scanning_progress">Se scanează…</string>
+    <string name="setting_vt_strict_check_title">Verificare strictă VirusTotal</string>
+    <string name="setting_vt_strict_check_summary">Avertizează înainte de instalare dacă fișierul nu a fost scanat</string>
 </resources>
